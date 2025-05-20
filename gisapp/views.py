@@ -1,3 +1,19 @@
-from django.shortcuts import render
+import json 
 
-# Create your views here.
+from django.shortcuts import render
+from .models import ValuesPoints
+from django.core.serializers import serialize
+
+
+def get_context_data(request):
+    data_geojson = serialize('geojson', ValuesPoints.objects.all(),
+            geometry_field='geom',
+            fields=('f3'))
+    
+    valid_data = json.loads(data_geojson)
+    
+    context = {
+        'context': valid_data,
+        }
+
+    return render(request, 'map.html', context)
