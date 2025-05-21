@@ -1,75 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
-  <!-- - - - - - - - - - - - - - - - -->
-  {% load static %}
-  <!-- - - - - - - - - - - - - - - - -->
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Webpage</title>
+    <title>Heatmap with Points</title>
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css">
+</head>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    
-  </head>
-
-  <body>
-
+<body>
     <div id="map" class="map"></div>
+    <div id="controls">
+        <div class="control-group">
+            <label for="blur">Blur:</label>
+            <input type="range" id="blur" min="0" max="100" value="45">
+            <span id="blur-value">45</span>
+        </div>
+        <div class="control-group">
+            <label for="radius">Radius:</label>
+            <input type="range" id="radius" min="1" max="50" value="8">
+            <span id="radius-value">8</span>
+        </div>
+        <div id="coordinates">
+            Координаты: <span id="mouse-coords"></span>
+        </div>
+    </div>
+    <div id="popup" class="popup"></div>
 
     <style>
-      html, body {
-        height: 100%;
-        width: 100%;
-        margin: auto;
-      }
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
 
-      #map {
-        height: 100%; /* Высота карты, оставшейся части от общей высоты страницы */
-        width: 100%; /* Ширина карты */
-        overflow: hidden; /* Запретить прокрутку карты */
-        background-color: rgb(255, 255, 255);
-      }
+        #map {
+            height: 100%;
+            width: 100%;
+        }
 
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .control-group {
+            margin: 5px 0;
+        }
+
+        label {
+            display: inline-block;
+            width: 60px;
+        }
+
+        input[type="range"] {
+            vertical-align: middle;
+        }
+
+        span {
+            display: inline-block;
+            width: 30px;
+            text-align: right;
+        }
+
+        #coordinates {
+            margin-top: 10px;
+            white-space: nowrap;
+        }
+
+        #mouse-coords {
+            width: auto;
+            min-width: 180px;
+        }
+
+        .popup {
+            position: absolute;
+            background: white;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: 14px;
+            pointer-events: none;
+            display: none;
+        }
     </style>
 
     <script>
+        var map = new ol.Map({
+            target: 'map',
+            view: new ol.View({
+                center: ol.proj.fromLonLat([54.6590630, 20.6531253]),
+                zoom: 13
+            }),
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.OSM()
+                })
+            ]
+        });
+
+        // Загрузка данных
+        var points = {{ context|safe }};
         
-        // Создать новую карту с заданными координатами и уровнем зума
-        var map = L.map('map').setView([54.674, 20.616], 4);
+        var vectorSource = new ol.source.Vector({
+            features: new ol.format.GeoJSON().readFeatures(points, {
+                featureProjection: 'EPSG:3857'
+            })
+        });
 
+        // Тепловая карта
+        var heatmapLayer = new ol.layer.Heatmap({
+            source: vectorSource,
+            blur: 45,
+            radius: 8,
+            weight: 'weight'
+        });
 
-        // Это базовый слой OSM
-        var baselayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                minZoom: 0, // минимальный масштаб
-                                maxZoom: 24, // максимальный масштаб
-                                tms: false, // использование TMS
-                                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' // ссылка на авторство
-        }).addTo(map); // добавление тайлов OSM как подложки
+        // Слой точек
+        var pointLayer = new ol.layer.Vector({
+            source: vectorSource,
+            style: new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 3,
+                    fill: new ol.style.Fill({ color: 'rgba(100, 100, 100, 0.8)' }),
+                    stroke: new ol.style.Stroke({
+                        color: 'rgba(0, 0, 0, 0.8)',
+                        width: 1
+                    })
+                })
+            })
+        });
 
+        map.addLayer(heatmapLayer);
+        map.addLayer(pointLayer);
 
-        var points = {{ context.features|safe }};
-        
-                      
-        // Добавляем линий из переменных geodjang lines подсасывапемых из БД во время загрузки этой страницы
-        var mappoints = L.geoJSON(points, {
-        }).addTo(map);
-        
+        // Элементы управления
+        var blurInput = document.getElementById('blur');
+        var radiusInput = document.getElementById('radius');
+        var blurValue = document.getElementById('blur-value');
+        var radiusValue = document.getElementById('radius-value');
+        var coordsElement = document.getElementById('mouse-coords');
+        var popupElement = document.getElementById('popup');
 
-        // Настройка переключателя слоёв
-        var baseMaps = {
-          'Базовая карта': baselayer,
-        };
-        var myMaps = {
-          'Точки': mappoints,
-          };
-        L.control.layers(baseMaps, myMaps).addTo(map); 
-       
+        // Оверлей для подсказок
+        var overlay = new ol.Overlay({
+            element: popupElement,
+            positioning: 'bottom-center',
+            stopEvent: false
+        });
+        map.addOverlay(overlay);
 
+        // Обновление координат мыши
+        function updateMouseCoordinates(event) {
+            var coordinates = ol.proj.transform(event.coordinate, 'EPSG:3857', 'EPSG:4326');
+            coordsElement.innerHTML = 
+                coordinates[0].toFixed(6) + ', ' + 
+                coordinates[1].toFixed(6) + 
+                ' (EPSG:4326)';
+        }
+
+        // Обработчики событий
+        map.on('pointermove', function(evt) {
+            if (evt.dragging) return;
+            updateMouseCoordinates(evt);
+            
+            var hasFeature = map.hasFeatureAtPixel(evt.pixel);
+            map.getTargetElement().style.cursor = hasFeature ? 'pointer' : 'default';
+        });
+
+        map.on('click', function(evt) {
+            var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
+                return feature;
+            });
+            
+            if (feature) {
+                var f3Value = feature.get('f3');
+                popupElement.innerHTML = 'Значение: ' + f3Value;
+                overlay.setPosition(evt.coordinate);
+                popupElement.style.display = 'block';
+            } else {
+                popupElement.style.display = 'none';
+            }
+        });
+
+        // Ползунки
+        blurInput.addEventListener('input', function() {
+            heatmapLayer.setBlur(parseInt(this.value));
+            blurValue.textContent = this.value;
+        });
+
+        radiusInput.addEventListener('input', function() {
+            heatmapLayer.setRadius(parseInt(this.value));
+            radiusValue.textContent = this.value;
+        });
+
+        // Инициализация
+        blurValue.textContent = blurInput.value;
+        radiusValue.textContent = radiusInput.value;
+        coordsElement.innerHTML = 'Наведите на карту';
     </script>
-
-  </body>
+</body>
 </html>
-
-
