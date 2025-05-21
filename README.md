@@ -75,6 +75,8 @@ CREATE EXTENSION postgis;
 Переключаемся на юзера
 exit
 
+
+
 ## Linux Ubuntu 
 
 Для установки PostGIS на Ubuntu, выполните следующие шаги:

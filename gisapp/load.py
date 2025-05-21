@@ -40,7 +40,7 @@ valuespoints_mapping = {
     'geom': 'MULTIPOINT',
 }
 
-valuespoints_mapping_shp = Path(__file__).resolve().parent / "indata" / "Points.shp"
+valuespoints_mapping_shp = Path(__file__).resolve().parent / "indata" / "points.shp"
 
 def run(verbose=True):
     lm = LayerMapping(ValuesPoints, valuespoints_mapping_shp, valuespoints_mapping, transform=True) # преобразуем в заданную в моделе СК (при необходимости)

@@ -3,36 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heatmap with Points</title>
+    <title>Heatmap</title>
     <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css">
 </head>
 
 <body>
     <div id="map" class="map"></div>
-    <div id="controls">
+    
+    <!-- Блок управления слоями -->
+    <div id="layer-control" class="control-box">
+        <button id="toggle-layers">Скрыть точки</button>
+    </div>
+
+    <!-- Блок параметров и координат -->
+    <div id="controls" class="control-box">
         <div class="control-group">
-            <label for="blur">Blur:</label>
+            <label for="blur">Размытие:</label>
             <input type="range" id="blur" min="0" max="100" value="45">
             <span id="blur-value">45</span>
         </div>
         <div class="control-group">
-            <label for="radius">Radius:</label>
+            <label for="radius">Радиус:</label>
             <input type="range" id="radius" min="1" max="50" value="8">
             <span id="radius-value">8</span>
         </div>
         <div id="coordinates">
-            Координаты: <span id="mouse-coords"></span>
+            Координаты: <span id="mouse-coords">Наведите на карту</span>
         </div>
     </div>
-    <div id="popup" class="popup"></div>
+
+    <!-- Всплывающая подсказка -->
+    <div id="popup" class="control-box popup"></div>
 
     <style>
+        /* Базовые стили */
         html, body {
             height: 100%;
             width: 100%;
             margin: 0;
             padding: 0;
+            font-family: Arial, sans-serif;
         }
 
         #map {
@@ -40,67 +51,90 @@
             width: 100%;
         }
 
-        #controls {
+        /* Общие стили элементов управления */
+        .control-box {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px 15px;
             border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
             z-index: 1000;
-            font-family: Arial, sans-serif;
-            font-size: 14px;
             color: #333;
+            font-size: 14px;
+        }
+
+        /* Стили для блока слоев */
+        #layer-control {
+            top: 15px;
+            right: 15px;
+        }
+
+        #layer-control button {
+            background: rgba(240, 240, 240, 0.9);
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        #layer-control button:hover {
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Стили для основного блока управления */
+        #controls {
+            bottom: 15px;
+            left: 15px;
+            min-width: 250px;
         }
 
         .control-group {
-            margin: 5px 0;
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
         }
 
         label {
             display: inline-block;
-            width: 60px;
+            width: 70px;
+            margin-right: 10px;
         }
 
         input[type="range"] {
-            vertical-align: middle;
-        }
-
-        span {
-            display: inline-block;
-            width: 30px;
-            text-align: right;
+            flex-grow: 1;
+            margin: 0 10px;
         }
 
         #coordinates {
-            margin-top: 10px;
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
             white-space: nowrap;
         }
 
-        #mouse-coords {
-            width: auto;
-            min-width: 180px;
+        /* Стили для подсказки */
+        .popup {
+            display: none;
+            pointer-events: none;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            max-width: 200px;
         }
 
-        .popup {
-            position: absolute;
-            background: white;
-            padding: 5px 10px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            font-size: 14px;
-            pointer-events: none;
-            display: none;
+        #mouse-coords {
+            color: #666;
         }
     </style>
 
     <script>
+        // Инициализация карты
         var map = new ol.Map({
             target: 'map',
             view: new ol.View({
-                center: ol.proj.fromLonLat([54.6590630, 20.6531253]),
-                zoom: 13
+                center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
+                zoom: 22
             }),
             layers: [
                 new ol.layer.Tile({
@@ -111,14 +145,13 @@
 
         // Загрузка данных
         var points = {{ context|safe }};
-        
         var vectorSource = new ol.source.Vector({
             features: new ol.format.GeoJSON().readFeatures(points, {
                 featureProjection: 'EPSG:3857'
             })
         });
 
-        // Тепловая карта
+        // Инициализация слоев
         var heatmapLayer = new ol.layer.Heatmap({
             source: vectorSource,
             blur: 45,
@@ -126,66 +159,61 @@
             weight: 'weight'
         });
 
-        // Слой точек
         var pointLayer = new ol.layer.Vector({
             source: vectorSource,
             style: new ol.style.Style({
                 image: new ol.style.Circle({
-                    radius: 3,
-                    fill: new ol.style.Fill({ color: 'rgba(100, 100, 100, 0.8)' }),
+                    radius: 2,
+                    fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }),
                     stroke: new ol.style.Stroke({
-                        color: 'rgba(0, 0, 0, 0.8)',
+                        color: 'rgba(100, 100, 100, 0.9)',
                         width: 1
                     })
                 })
             })
         });
 
+        // Добавление слоев
         map.addLayer(heatmapLayer);
         map.addLayer(pointLayer);
 
         // Элементы управления
-        var blurInput = document.getElementById('blur');
-        var radiusInput = document.getElementById('radius');
-        var blurValue = document.getElementById('blur-value');
-        var radiusValue = document.getElementById('radius-value');
-        var coordsElement = document.getElementById('mouse-coords');
-        var popupElement = document.getElementById('popup');
+        const blurInput = document.getElementById('blur');
+        const radiusInput = document.getElementById('radius');
+        const blurValue = document.getElementById('blur-value');
+        const radiusValue = document.getElementById('radius-value');
+        const coordsElement = document.getElementById('mouse-coords');
+        const popupElement = document.getElementById('popup');
+        const toggleButton = document.getElementById('toggle-layers');
 
-        // Оверлей для подсказок
-        var overlay = new ol.Overlay({
+        // Оверлей для подсказки
+        const overlay = new ol.Overlay({
             element: popupElement,
             positioning: 'bottom-center',
             stopEvent: false
         });
         map.addOverlay(overlay);
 
-        // Обновление координат мыши
-        function updateMouseCoordinates(event) {
-            var coordinates = ol.proj.transform(event.coordinate, 'EPSG:3857', 'EPSG:4326');
-            coordsElement.innerHTML = 
-                coordinates[0].toFixed(6) + ', ' + 
-                coordinates[1].toFixed(6) + 
-                ' (EPSG:4326)';
-        }
-
         // Обработчики событий
         map.on('pointermove', function(evt) {
             if (evt.dragging) return;
-            updateMouseCoordinates(evt);
             
-            var hasFeature = map.hasFeatureAtPixel(evt.pixel);
-            map.getTargetElement().style.cursor = hasFeature ? 'pointer' : 'default';
+            // Обновление координат
+            const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+            coordsElement.textContent = 
+                `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
+            
+            // Изменение курсора
+            map.getTargetElement().style.cursor = map.hasFeatureAtPixel(evt.pixel) 
+                ? 'pointer' 
+                : 'default';
         });
 
         map.on('click', function(evt) {
-            var feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
-                return feature;
-            });
+            const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
             
             if (feature) {
-                var f3Value = feature.get('f3');
-                popupElement.innerHTML = 'Значение: ' + f3Value;
+                popupElement.textContent = `Значение: ${feature.get('f3')}`;
                 overlay.setPosition(evt.coordinate);
                 popupElement.style.display = 'block';
             } else {
@@ -193,21 +221,29 @@
             }
         });
 
-        // Ползунки
-        blurInput.addEventListener('input', function() {
-            heatmapLayer.setBlur(parseInt(this.value));
-            blurValue.textContent = this.value;
+        // Управление слоями
+        let layersVisible = true;
+        toggleButton.addEventListener('click', () => {
+            layersVisible = !layersVisible;
+            // heatmapLayer.setVisible(layersVisible);
+            pointLayer.setVisible(layersVisible);
+            toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
         });
 
-        radiusInput.addEventListener('input', function() {
-            heatmapLayer.setRadius(parseInt(this.value));
-            radiusValue.textContent = this.value;
+        // Управление параметрами тепловой карты
+        blurInput.addEventListener('input', () => {
+            heatmapLayer.setBlur(parseInt(blurInput.value));
+            blurValue.textContent = blurInput.value;
         });
 
-        // Инициализация
+        radiusInput.addEventListener('input', () => {
+            heatmapLayer.setRadius(parseInt(radiusInput.value));
+            radiusValue.textContent = radiusInput.value;
+        });
+
+        // Инициализация значений
         blurValue.textContent = blurInput.value;
         radiusValue.textContent = radiusInput.value;
-        coordsElement.innerHTML = 'Наведите на карту';
     </script>
 </body>
 </html>
