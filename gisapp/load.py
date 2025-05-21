@@ -23,6 +23,7 @@ from .models import ValuesPoints
 #     f12 = models.CharField(max_length=254)
 #     geom = models.MultiPointField(srid=4326)
 
+# и такой словарь
 
 valuespoints_mapping = {
     'utc_time': 'UTC_time',
@@ -39,6 +40,8 @@ valuespoints_mapping = {
     'f12': 'F12',
     'geom': 'MULTIPOINT',
 }
+
+# устанавливаем путь к шейп-файлу
 
 valuespoints_mapping_shp = Path(__file__).resolve().parent / "indata" / "points.shp"
 
