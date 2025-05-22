@@ -1,5 +1,7 @@
 ![Пользовательский интерфейс](image.png)
 
+![Демонстрация](video.mp4)
+
 python3 -m venv venv
 
 source venv/bin/activate
