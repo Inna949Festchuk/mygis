@@ -240,3 +240,86 @@ chmod +x stop-server.sh
 ```bash
 docker-compose down -v
 ```
+
+# DEPLOY
+Чтобы установить Docker Compose на Ubuntu, выполните следующие шаги:
+
+### 1. Установите Docker Engine (если ещё не установлен)
+Перед установкой Docker Compose убедитесь, что Docker Engine установлен.
+
+#### Обновите пакеты и установите зависимости:
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+```
+
+#### Добавьте официальный GPG-ключ Docker:
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+```
+
+#### Добавьте репозиторий Docker:
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+#### Установите Docker:
+```bash
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io
+```
+
+#### Проверьте установку Docker:
+```bash
+sudo docker run hello-world
+```
+
+### 2. Установите Docker Compose
+
+#### Скачайте бинарный файл Docker Compose:
+Замените `v2.24.5` на [актуальную версию](https://github.com/docker/compose/releases):
+```bash
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-$(uname -m)" -o /usr/local/bin/docker-compose
+```
+
+#### Дайте права на выполнение:
+```bash
+sudo chmod +x /usr/local/bin/docker-compose
+```
+
+#### Проверьте установку:
+```bash
+docker-compose --version
+```
+Вывод должен быть похож на:  
+`Docker Compose version v2.24.5`
+
+---
+
+### Альтернативный вариант: Docker Compose как плагин (рекомендуется)
+Если вы установили Docker через официальный репозиторий, можно добавить плагин `docker-compose-plugin`:
+
+```bash
+sudo apt install -y docker-compose-plugin
+```
+
+Проверьте работу:
+```bash
+docker compose version
+```
+Команда использует пробел вместо дефиса: `docker compose`.
+
+---
+
+### Примечания
+- Для работы без `sudo` добавьте пользователя в группу `docker`:  
+  ```bash
+  sudo usermod -aG docker $USER
+  newgrp docker  # Обновите сессию
+  ```
+- Актуальные версии Docker Compose смотрите на [GitHub](https://github.com/docker/compose/releases).
