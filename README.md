@@ -114,133 +114,29 @@ exit
 
 # Установка приложения с помощью Docker-композа c Linux Ubuntu
 
-1. Перед запуском команды остановите службу postgresql, если она запущена 
+1. Перед запуском команды остановите службу postgresql, если она запущена (для Linux и MacOS)
+```bash
 sudo systemctl stop postgresql 
-sudo systemctl disable postgresql 
-2. Запустите команду docker-compose up -d --build
-3. Зайти в контейнер с помощью команды docker exec -it mygis-app-1 sh
-4. Выполните команду python manage.py migrate
-5. После этого вызовите оболочку Django из каталога проекта geodjango для загрузки данных из шейп-файла
+sudo systemctl disable postgresql
+``` 
+2. Запустите команду 
+```bash
+docker-compose up -d --build
+```
+3. Зайти в контейнер с помощью команды 
+```bash
+docker exec -it mygis-app-1 sh
+```
+4. Выполните команду 
+```bash
+python manage.py migrate
+```
+5. После этого вызовите оболочку Django для загрузки данных из шейп-файла
+```python
 python manage.py shell
-6. Далее импортируем модуль load, вызываем процедуру run и наблюдаем, как LayerMapping выполняет свою работу
+```
+6. Далее импортируем модуль `load`, вызываем процедуру `run` и наблюдаем, как LayerMapping выполняет свою работу
+```python
 from gisapp import load
 load.run()
-
-
-# Развертывание Docker-проекта без интернета
-
-Чтобы развернуть ваш Docker-проект без подключения к интернету, выполните следующие шаги:
-
-### 1. Подготовка Docker образов на машине с интернетом
-```bash
-# Скачайте базовые образы
-docker pull python:3.10-alpine
-docker pull postgis/postgis:15-3.3
-
-# Сохраните образы в архив
-docker save -o python_image.tar python:3.10-alpine
-docker save -o postgis_image.tar postgis/postgis:15-3.3
 ```
-
-### 2. Подготовка APK пакетов
-На машине с интернетом:
-```bash
-# Создайте директорию для пакетов
-mkdir alpine-packages && cd alpine-packages
-
-# Скачайте пакеты и их зависимости
-apk fetch --no-cache gcc musl-dev gdal-dev geos-dev postgresql-client
-```
-
-Структура проекта после подготовки:
-```
-your-project/
-├── alpine-packages/
-│   ├── gcc-<version>.apk
-│   ├── musl-dev-<version>.apk
-│   └── ... 
-├── requirements.txt
-├── Dockerfile
-└── docker-compose.yml
-```
-
-### 3. Подготовка Python зависимостей
-```bash
-# Создайте директорию для пакетов Python
-mkdir python-packages && cd python-packages
-
-# Скачайте зависимости (на Linux)
-pip download -r ../requirements.txt --platform manylinux2014_x86_64 --only-binary=:all:
-
-# Или на другой ОС (нужно указать целевую платформу)
-pip download -r ../requirements.txt --platform musllinux_1_1_x86_64 --only-binary=:all:
-```
-
-### 4. Измените Dockerfile
-```Dockerfile
-FROM python:3.10-alpine
-
-# Копируем APK пакеты
-COPY alpine-packages/*.apk /tmp/apk/
-
-# Установка пакетов из локального хранилища
-RUN apk add --no-cache --allow-untrusted /tmp/apk/*.apk
-
-WORKDIR /app
-
-# Копируем Python зависимости
-COPY python-packages /tmp/pip-packages
-
-# Устанавливаем Python пакеты
-RUN pip install --no-index --find-links=/tmp/pip-packages -r requirements.txt
-
-COPY . .
-
-EXPOSE 8000
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
-```
-
-### 5. Перенос файлов на целевую машину
-Скопируйте всю структуру проекта включая:
-- `python_image.tar`
-- `postgis_image.tar`
-- `alpine-packages/`
-- `python-packages/`
-
-### 6. Загрузка образов на целевой машине
-```bash
-docker load -i python_image.tar
-docker load -i postgis_image.tar
-```
-
-### 7. Запуск проекта
-```bash
-docker-compose up -d
-```
-
-### Дополнительные настройки
-1. Для GEOS/GDAL добавьте в Dockerfile:
-```Dockerfile
-ENV GEOS_LIBRARY_PATH=/usr/lib/libgeos_c.so
-ENV GDAL_LIBRARY_PATH=/usr/lib/libgdal.so
-```
-
-2. Для работы с PostGIS в Django настройки:
-```python
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'mygis',
-        'USER': 'postgres',
-        'PASSWORD': 'mygispass',
-        'HOST': 'db',
-        'PORT': '5432',
-    }
-}
-```
-
-Важные моменты:
-- Все пакеты должны быть совместимы с Alpine Linux (musl вместо glibc)
-- Версии Python пакетов должны соответствовать целевой платформе
-- Для ARM-архитектур потребуются соответствующие пакеты
-- Проверьте совместимость версий PostGIS и PostgreSQL
