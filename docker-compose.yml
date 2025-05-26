@@ -1,0 +1,33 @@
+services:
+
+  app:
+    build:
+      context: . # указываем директорию с Dockerfile
+    entrypoint: python manage.py runserver 0.0.0.0:8000 # указываем команду для запуска сервера
+    volumes:
+      - ./:/app
+    ports:
+      - "8000:8000"  # Добавляем проброс порта
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend-network
+
+  db:
+    image: postgis/postgis:15-3.3  # Образ с предустановленным PostGIS
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mygispass
+      POSTGRES_DB: mygis
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"] 
+    networks:
+      - backend-network
+
+networks:
+  backend-network:
+    driver: bridge
+
