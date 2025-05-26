@@ -23,10 +23,7 @@ services:
       POSTGRES_PASSWORD: mygispass
       POSTGRES_DB: mygis
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $(POSTGRES_USER)"] 
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres"] 
     networks:
       - backend-network
 

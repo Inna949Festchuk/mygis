@@ -145,7 +145,10 @@
             }),
             layers: [
                 new ol.layer.Tile({
-                    source: new ol.source.OSM()
+                    source: new ol.source.OSM( )
+                    // source: new ol.source.XYZ({
+                    //     url: 'gisapp/static/tiles/{z}/{x}/{y}.png'
+                    // })
                 })
             ]
         });
