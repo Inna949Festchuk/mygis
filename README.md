@@ -1,5 +1,7 @@
 ![Пользовательский интерфейс](image.png)
 
+# Настройки разработчика:
+
 python3 -m venv venv
 
 source venv/bin/activate
@@ -12,7 +14,21 @@ django-admin startproject gisproject .
 
 python3 manage.py startapp gisapp
 
+Установка OpenLayers offline
 
+переходим по ссылкам 
+https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js
+https://cdn.jsdelivr.net/npm/ol@latest/ol.css
+
+и сохраняем страницы в папки проекта, соответственно 
+/gisapp
+   /js
+      ol.js
+   /css
+      ol.css
+   index.html
+
+аходим в index.html меняем ссылки на оффлайн версию
 
 # РАЗВОРАЧИВАЕМ ПРИЛОЖЕНИЕ:
 

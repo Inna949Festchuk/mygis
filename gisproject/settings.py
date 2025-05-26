@@ -87,7 +87,8 @@ DATABASES = {
         'NAME': 'mygis',
         'USER': 'postgres',
         'PASSWORD': 'mygispass',
-        'HOST': 'db',  # Имя службы PostgreSQL в docker-compose
+        'HOST' : 'localhost', 
+        # 'HOST': 'db',  # Имя службы PostgreSQL в docker-compose
         'PORT': '5432',
     }
 }

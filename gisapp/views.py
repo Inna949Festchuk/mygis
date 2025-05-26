@@ -16,4 +16,4 @@ def get_context_data(request):
         'context': valid_data,
         }
 
-    return render(request, 'map.html', context)
+    return render(request, 'index.html', context)

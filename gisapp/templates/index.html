@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- - - - - - - - - - - - - - - - -->
+{% load static %}
+<!-- - - - - - - - - - - - - - - - -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heatmap</title>
-    <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css">
+    <!-- Онлайн -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css"> -->
+    <!-- Оффлайн -->
+    <script src="{% static 'js/ol.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/ol.css' %}">
 </head>
 
 <body>
