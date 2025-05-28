@@ -7,18 +7,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heatmap</title>
-    <!-- Онлайн -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css"> -->
-    <!-- Оффлайн -->
+    {% load static %}
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
 </head>
 
 <body>
     <div id="map" class="map"></div>
-    
-    <!-- Блок управления слоями -->
     <div id="layer-control" class="control-box">
         <button id="toggle-layers">Скрыть точки</button>
     </div>
@@ -135,9 +130,9 @@
         }
     </style>
 
-    <script>
+        <script>
         // Инициализация карты
-        var map = new ol.Map({
+        const map = new ol.Map({
             target: 'map',
             view: new ol.View({
                 center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
@@ -145,31 +140,31 @@
             }),
             layers: [
                 new ol.layer.Tile({
-                    source: new ol.source.OSM( )
-                    // source: new ol.source.XYZ({
-                    //     url: 'gisapp/static/tiles/{z}/{x}/{y}.png'
-                    // })
+                    source: new ol.source.OSM()
                 })
             ]
         });
 
         // Загрузка данных
-        var points = {{ context|safe }};
-        var vectorSource = new ol.source.Vector({
+        const points = {{ context|safe }};
+        console.log(points); // отладочный лог для проверки данных
+
+        const vectorSource = new ol.source.Vector({
             features: new ol.format.GeoJSON().readFeatures(points, {
                 featureProjection: 'EPSG:3857'
             })
         });
+        console.log(vectorSource.getFeatures()); // отладочный лог для проверки источника данных
 
         // Инициализация слоев
-        var heatmapLayer = new ol.layer.Heatmap({
+        const heatmapLayer = new ol.layer.Heatmap({
             source: vectorSource,
             blur: 45,
             radius: 8,
             weight: 'weight'
         });
 
-        var pointLayer = new ol.layer.Vector({
+        const pointLayer = new ol.layer.Vector({
             source: vectorSource,
             style: new ol.style.Style({
                 image: new ol.style.Circle({
@@ -187,13 +182,10 @@
         map.addLayer(heatmapLayer);
         map.addLayer(pointLayer);
 
-        // осле загрузки данных, чтобы принудительно обновить карту.
-        map.render(); 
-        // осле загрузки данных, чтобы обновить размер карты и отобразить точки.
-        // map.updateSize();
-        // // после загрузки данных, чтобы обновить вид карты и отобразить точки
-        // map.getView().refresh();
-        // Использовать библиотеку ol-ext и ее методы для обновления карты после загрузки данных.
+        // Обновление карты при изменении источника данных
+        vectorSource.on('changed', function() {
+            map.render();
+        });
 
         // Элементы управления
         const blurInput = document.getElementById('blur');
@@ -213,7 +205,7 @@
         map.addOverlay(overlay);
 
         // Обработчики событий
-        map.on('pointermove', function(evt) {
+        map.on('pointermove', (evt) => {
             if (evt.dragging) return;
             
             // Обновление координат
@@ -227,8 +219,8 @@
                 : 'default';
         });
 
-        map.on('click', function(evt) {
-            const feature = map.forEachFeatureAtPixel(evt.pixel, f => f);
+        map.on('click', (evt) => {
+            const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
             
             if (feature) {
                 popupElement.textContent = `Значение: ${feature.get('f3')}`;

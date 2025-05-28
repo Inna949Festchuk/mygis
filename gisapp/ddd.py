@@ -4,7 +4,7 @@ import pathlib
 import time
 import threading
 from django.conf import settings
-from django.contrib.gis.geos import MultiPoint, Point
+from django.contrib.gis.geos import MultiPoint
 from .models import ValuesPoints
 
 
@@ -71,11 +71,11 @@ class DataImporter:
                     # Парсинг данных
                     latitude = float(fields[2])
                     if fields[3] == 'S': # Если север, то умножаем на -1
-                        latitude = -latitude
+                        latitude = -1 *latitude
 
                     longitude = float(fields[4])
                     if fields[5] == 'W': # Если запад, то умножаем на -1
-                        longitude = -longitude
+                        longitude = -1 * longitude
                         
                     # Сохранение данных в базу данных с проверкой на уникальность
                     created = ValuesPoints.objects.get_or_create(
