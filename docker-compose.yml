@@ -1,15 +1,18 @@
-services:
+version: '3'
 
+services:
   app:
     build:
       context: . # указываем директорию с Dockerfile
-    entrypoint: python manage.py runserver 0.0.0.0:8000 # указываем команду для запуска сервера
+    entrypoint: "sh -c 'python manage.py migrate && python manage.py runserver 0.0.0.0:8000'" # указываем команду для запуска сервера
     volumes:
       - ./:/app
     ports:
       - "8000:8000"  # Добавляем проброс порта
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - backend-network
@@ -19,15 +22,26 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: $(DB_NAME)
-      POSTGRES_USER: $(DB_USER)
-      POSTGRES_PASSWORD: $(DB_PASSWORD)
+      POSTGRES_DB: mygis
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mygispass
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"] 
+      test: ["CMD-SHELL", "pg_isready -U postgres"] 
+    networks:
+      - backend-network
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
     networks:
       - backend-network
 
 networks:
   backend-network:
     driver: bridge
-

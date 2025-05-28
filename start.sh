@@ -16,10 +16,12 @@ echo "Ожидание инициализации БД (15 сек)..."
 sleep 15
 
 # Выполняем миграции
-docker-compose exec app sh -c "python manage.py migrate"
+# docker-compose exec app sh -c "python manage.py migrate"
 
-# Загружаем данные через LayerMapping
-docker-compose exec app sh -c "echo -e 'from gisapp import load\nload.run()' | python manage.py shell"
+# Загружаем данные через LayerMapping (Разкоментировать если нужно загружать пространственные данные из шейпфайлов)
+# docker-compose exec app sh -c "echo -e 'from gisapp import load\nload.run()' | python manage.py shell"
 
 # Открываем приложение в браузере
-xdg-open "http://localhost:8000/map"
+# xdg-open "http://localhost:8000/map"
+
+echo "Приложение успешно установлено идоступно по адресу http://localhost:8000/map"

@@ -187,6 +187,14 @@
         map.addLayer(heatmapLayer);
         map.addLayer(pointLayer);
 
+        // осле загрузки данных, чтобы принудительно обновить карту.
+        map.render(); 
+        // осле загрузки данных, чтобы обновить размер карты и отобразить точки.
+        // map.updateSize();
+        // // после загрузки данных, чтобы обновить вид карты и отобразить точки
+        // map.getView().refresh();
+        // Использовать библиотеку ol-ext и ее методы для обновления карты после загрузки данных.
+
         // Элементы управления
         const blurInput = document.getElementById('blur');
         const radiusInput = document.getElementById('radius');
