@@ -36,7 +36,7 @@ python3 manage.py startapp gisapp
 
 Создаем тайловую оффлайн карту в QGIS (я использую расширение QTiles) и сохраняем в папку проекта tiles
 
-![](download_tiles.png)
+![](download_tiles_XYZ.png)
 
 В index.html меняем ссылки на оффлайн версию
 

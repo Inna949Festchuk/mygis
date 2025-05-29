@@ -1,1 +1,7 @@
 .env
+venv
+gisproject/__pycache__/
+gisapp/__pycache__/
+gisapp/indata/processed/
+gisapp/static/tiles/
+gisapp/static/tiles.zip
