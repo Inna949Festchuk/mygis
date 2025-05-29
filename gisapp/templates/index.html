@@ -7,9 +7,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heatmap</title>
-    {% load static %}
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
+    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css"> -->
 </head>
 
 <body>
@@ -138,9 +139,19 @@
                 center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
                 zoom: 22
             }),
+            // layers: [
+            //     new ol.layer.Tile({
+            //         source: new ol.source.OSM( {
+            //             url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            //             attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            //         })
+            //     })
+            // ]
             layers: [
                 new ol.layer.Tile({
-                    source: new ol.source.OSM()
+                source: new ol.source.XYZ({
+                    url: '/static/tiles/{z}/{x}/{y}.png'
+                    })
                 })
             ]
         });

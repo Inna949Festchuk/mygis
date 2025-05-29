@@ -1,6 +1,7 @@
 # indata
 venv
-gisproject/__pycache__
-gisapp/__pycache__
+gisproject/__pycache__/
+gisapp/__pycache__/
 gisapp/indata/processed/
+gisapp/static/tiles/
 # .env
