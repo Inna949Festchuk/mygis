@@ -1,22 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- - - - - - - - - - - - - - - - -->
 {% load static %}
-<!-- - - - - - - - - - - - - - - - -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heatmap</title>
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
-    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css"> -->
 </head>
 
 <body>
     <div id="map" class="map"></div>
+    
+    <!-- Кастомное модальное окно для подтверждения -->
+    <div id="confirm-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Подтверждение действия</h3>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите очистить базу данных? Все данные будут удалены.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-cancel" class="modal-btn cancel-btn">Отмена</button>
+                <button id="confirm-ok" class="modal-btn ok-btn">Очистить</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Блок управления слоями и очисткой -->
     <div id="layer-control" class="control-box">
         <button id="toggle-layers">Скрыть точки</button>
+        <button id="clear-db" class="trash-button" title="Очистить базу данных">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>
     </div>
 
     <!-- Блок параметров и координат -->
@@ -47,6 +66,7 @@
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
 
         #map {
@@ -70,6 +90,8 @@
         #layer-control {
             top: 15px;
             right: 15px;
+            display: flex;
+            gap: 8px;
         }
 
         #layer-control button {
@@ -79,11 +101,22 @@
             cursor: pointer;
             border-radius: 3px;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #layer-control button:hover {
             background: #fff;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .trash-button:hover {
+            color: #e74c3c;
+        }
+
+        .trash-button svg {
+            pointer-events: none;
         }
 
         /* Стили для основного блока управления */
@@ -129,9 +162,88 @@
         #mouse-coords {
             color: #666;
         }
+        
+        /* Стили для модального окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            width: 400px;
+            max-width: 90%;
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .modal-body {
+            padding: 25px 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #555;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .cancel-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .cancel-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .ok-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .ok-btn:hover {
+            background: #c0392b;
+        }
     </style>
 
-        <script>
+    <script>
         // Инициализация карты
         const map = new ol.Map({
             target: 'map',
@@ -206,6 +318,10 @@
         const coordsElement = document.getElementById('mouse-coords');
         const popupElement = document.getElementById('popup');
         const toggleButton = document.getElementById('toggle-layers');
+        const clearDbButton = document.getElementById('clear-db');
+        const confirmDialog = document.getElementById('confirm-dialog');
+        const confirmCancel = document.getElementById('confirm-cancel');
+        const confirmOk = document.getElementById('confirm-ok');
 
         // Оверлей для подсказки
         const overlay = new ol.Overlay({
@@ -246,7 +362,6 @@
         let layersVisible = true;
         toggleButton.addEventListener('click', () => {
             layersVisible = !layersVisible;
-            // heatmapLayer.setVisible(layersVisible);
             pointLayer.setVisible(layersVisible);
             toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
         });
@@ -261,6 +376,63 @@
             heatmapLayer.setRadius(parseInt(radiusInput.value));
             radiusValue.textContent = radiusInput.value;
         });
+
+        // Функция для очистки базы данных
+        clearDbButton.addEventListener('click', function() {
+            confirmDialog.style.display = 'flex';
+        });
+        
+        // Обработчики для модального окна
+        confirmCancel.addEventListener('click', function() {
+            confirmDialog.style.display = 'none';
+        });
+        
+        confirmOk.addEventListener('click', function() {
+            confirmDialog.style.display = 'none';
+            fetch('/clear-db/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Очищаем точки на карте без дополнительного сообщения
+                    vectorSource.clear();
+                } else {
+                    console.error('Ошибка очистки базы данных:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка сети:', error);
+            });
+        });
+        
+        // Закрытие модального окна при клике вне его области
+        window.addEventListener('click', function(event) {
+            if (event.target === confirmDialog) {
+                confirmDialog.style.display = 'none';
+            }
+        });
+
+        // Функция для получения CSRF токена
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
 
         // Инициализация значений
         blurValue.textContent = blurInput.value;

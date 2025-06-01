@@ -1,22 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- - - - - - - - - - - - - - - - -->
 {% load static %}
-<!-- - - - - - - - - - - - - - - - -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heatmap</title>
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
-    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@latest/dist/ol.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@latest/ol.css"> -->
 </head>
 
 <body>
     <div id="map" class="map"></div>
+    
+    <!-- Блок управления слоями и очисткой -->
     <div id="layer-control" class="control-box">
         <button id="toggle-layers">Скрыть точки</button>
+        <button id="clear-db" class="trash-button" title="Очистить базу данных">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>
     </div>
 
     <!-- Блок параметров и координат -->
@@ -70,6 +73,8 @@
         #layer-control {
             top: 15px;
             right: 15px;
+            display: flex;
+            gap: 8px;
         }
 
         #layer-control button {
@@ -79,11 +84,22 @@
             cursor: pointer;
             border-radius: 3px;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #layer-control button:hover {
             background: #fff;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .trash-button:hover {
+            color: #e74c3c;
+        }
+
+        .trash-button svg {
+            pointer-events: none;
         }
 
         /* Стили для основного блока управления */
@@ -131,7 +147,7 @@
         }
     </style>
 
-        <script>
+    <script>
         // Инициализация карты
         const map = new ol.Map({
             target: 'map',
@@ -139,20 +155,21 @@
                 center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
                 zoom: 22
             }),
-            // layers: [
-            //     new ol.layer.Tile({
-            //         source: new ol.source.OSM()
-            //     })
-            // ]
             layers: [
                 new ol.layer.Tile({
-                source: new ol.source.XYZ({
-                    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-                    // url: 'http://localhost:8080/tile/{z}/{x}/{y}.png'
-                    // gisapp/static/tiles/Mapnik/{z}/{x}/{y}.png
-                })
+                    source: new ol.source.OSM( {
+                        url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    })
                 })
             ]
+            // layers: [
+            //     new ol.layer.Tile({
+            //     source: new ol.source.XYZ({
+            //         url: '/static/tiles/{z}/{x}/{y}.png'
+            //         })
+            //     })
+            // ]
         });
 
         // Загрузка данных
@@ -205,6 +222,7 @@
         const coordsElement = document.getElementById('mouse-coords');
         const popupElement = document.getElementById('popup');
         const toggleButton = document.getElementById('toggle-layers');
+        const clearDbButton = document.getElementById('clear-db');
 
         // Оверлей для подсказки
         const overlay = new ol.Overlay({
@@ -245,7 +263,6 @@
         let layersVisible = true;
         toggleButton.addEventListener('click', () => {
             layersVisible = !layersVisible;
-            // heatmapLayer.setVisible(layersVisible);
             pointLayer.setVisible(layersVisible);
             toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
         });
@@ -260,6 +277,49 @@
             heatmapLayer.setRadius(parseInt(radiusInput.value));
             radiusValue.textContent = radiusInput.value;
         });
+
+        // Функция для очистки базы данных
+        clearDbButton.addEventListener('click', function() {
+            if (confirm('Вы уверены, что хотите очистить базу данных? Все данные будут удалены.')) {
+                fetch('/clear-db/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('База данных очищена');
+                        // Очищаем точки на карте
+                        vectorSource.clear();
+                    } else {
+                        alert('Ошибка: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Ошибка сети: ' + error);
+                });
+            }
+        });
+
+        // Функция для получения CSRF токена
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
 
         // Инициализация значений
         blurValue.textContent = blurInput.value;
