@@ -139,21 +139,21 @@
                 center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
                 zoom: 22
             }),
-            // layers: [
-            //     new ol.layer.Tile({
-            //         source: new ol.source.OSM( {
-            //             url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            //             attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            //         })
-            //     })
-            // ]
             layers: [
                 new ol.layer.Tile({
-                source: new ol.source.XYZ({
-                    url: '/static/tiles/{z}/{x}/{y}.png'
+                    source: new ol.source.OSM( {
+                        url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     })
                 })
             ]
+            // layers: [
+            //     new ol.layer.Tile({
+            //     source: new ol.source.XYZ({
+            //         url: '/static/tiles/{z}/{x}/{y}.png'
+            //         })
+            //     })
+            // ]
         });
 
         // Загрузка данных
