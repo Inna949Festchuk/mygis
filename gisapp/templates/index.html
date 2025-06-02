@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heatmap</title>
+    <!-- Онлайн -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css"> -->
+    <!-- Оффлайн -->
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
 </head>
@@ -72,6 +76,11 @@
         #map {
             height: 100%;
             width: 100%;
+        }
+
+        /* Исправление предупреждения Canvas2D */
+        canvas {
+            will-read-frequently: true;
         }
 
         /* Общие стили элементов управления */
@@ -270,14 +279,12 @@
 
         // Загрузка данных
         const points = {{ context|safe }};
-        console.log(points); // отладочный лог для проверки данных
 
         const vectorSource = new ol.source.Vector({
             features: new ol.format.GeoJSON().readFeatures(points, {
                 featureProjection: 'EPSG:3857'
             })
         });
-        console.log(vectorSource.getFeatures()); // отладочный лог для проверки источника данных
 
         // Инициализация слоев
         const heatmapLayer = new ol.layer.Heatmap({
@@ -389,25 +396,40 @@
         
         confirmOk.addEventListener('click', function() {
             confirmDialog.style.display = 'none';
-            fetch('/clear-db/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            })
+            
+            // Получаем CSRF токен через GET-запрос
+            fetch('/get-csrf-token/')
             .then(response => response.json())
             .then(data => {
-                if (data.status === 'success') {
-                    // Очищаем точки на карте без дополнительного сообщения
-                    vectorSource.clear();
-                } else {
-                    console.error('Ошибка очистки базы данных:', data.message);
-                }
+                const csrftoken = data.csrfToken;
+                
+                fetch('/clear-db/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})  // Пустое тело запроса
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success') {
+                        vectorSource.clear();
+                    } else {
+                        console.error('Ошибка очистки базы данных:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка при очистке базы данных:', error);
+                });
             })
             .catch(error => {
-                console.error('Ошибка сети:', error);
+                console.error('Ошибка получения CSRF токена:', error);
             });
         });
         
@@ -417,22 +439,6 @@
                 confirmDialog.style.display = 'none';
             }
         });
-
-        // Функция для получения CSRF токена
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
 
         // Инициализация значений
         blurValue.textContent = blurInput.value;
