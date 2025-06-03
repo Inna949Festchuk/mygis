@@ -12,6 +12,22 @@
 <body>
     <div id="map" class="map"></div>
     
+    <!-- Кастомное модальное окно для подтверждения -->
+    <div id="confirm-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Подтверждение действия</h3>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите очистить базу данных? Все данные будут удалены.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-cancel" class="modal-btn cancel-btn">Отмена</button>
+                <button id="confirm-ok" class="modal-btn ok-btn">Очистить</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Блок управления слоями и очисткой -->
     <div id="layer-control" class="control-box">
         <button id="toggle-layers">Скрыть точки</button>
@@ -50,11 +66,17 @@
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
 
         #map {
             height: 100%;
             width: 100%;
+        }
+
+        /* Исправление предупреждения Canvas2D */
+        canvas {
+            will-read-frequently: true;
         }
 
         /* Общие стили элементов управления */
@@ -145,185 +167,334 @@
         #mouse-coords {
             color: #666;
         }
+        
+        /* Стили для модального окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            width: 400px;
+            max-width: 90%;
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .modal-body {
+            padding: 25px 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #555;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .cancel-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .cancel-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .ok-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .ok-btn:hover {
+            background: #c0392b;
+        }
     </style>
 
     <script>
+        // Основные переменные
+        let map;
+        let vectorSource;
+        let heatmapLayer;
+        let pointLayer;
+        let updateInterval;
+        let lastUpdate = 0;
+
         // Инициализация карты
-        const map = new ol.Map({
-            target: 'map',
-            view: new ol.View({
-                center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
-                zoom: 22
-            }),
-            layers: [
-                new ol.layer.Tile({
-                    source: new ol.source.OSM( {
-                        url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        function initMap() {
+            map = new ol.Map({
+                target: 'map',
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
+                    zoom: 22
+                }),
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM({
+                            url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        })
+                    })
+                ]
+            });
+
+            vectorSource = new ol.source.Vector();
+            
+            // Инициализация слоев
+            heatmapLayer = new ol.layer.Heatmap({
+                source: vectorSource,
+                blur: 45,
+                radius: 8,
+                weight: 'weight'
+            });
+
+            pointLayer = new ol.layer.Vector({
+                source: vectorSource,
+                style: new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 2,
+                        fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }),
+                        stroke: new ol.style.Stroke({
+                            color: 'rgba(100, 100, 100, 0.9)',
+                            width: 1
+                        })
                     })
                 })
-            ]
-            // layers: [
-            //     new ol.layer.Tile({
-            //     source: new ol.source.XYZ({
-            //         url: '/static/tiles/{z}/{x}/{y}.png'
-            //         })
-            //     })
-            // ]
-        });
+            });
 
-        // Загрузка данных
-        const points = {{ context|safe }};
-        console.log(points); // отладочный лог для проверки данных
-
-        const vectorSource = new ol.source.Vector({
-            features: new ol.format.GeoJSON().readFeatures(points, {
-                featureProjection: 'EPSG:3857'
-            })
-        });
-        console.log(vectorSource.getFeatures()); // отладочный лог для проверки источника данных
-
-        // Инициализация слоев
-        const heatmapLayer = new ol.layer.Heatmap({
-            source: vectorSource,
-            blur: 45,
-            radius: 8,
-            weight: 'weight'
-        });
-
-        const pointLayer = new ol.layer.Vector({
-            source: vectorSource,
-            style: new ol.style.Style({
-                image: new ol.style.Circle({
-                    radius: 2,
-                    fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }),
-                    stroke: new ol.style.Stroke({
-                        color: 'rgba(100, 100, 100, 0.9)',
-                        width: 1
-                    })
-                })
-            })
-        });
-
-        // Добавление слоев
-        map.addLayer(heatmapLayer);
-        map.addLayer(pointLayer);
-
-        // Обновление карты при изменении источника данных
-        vectorSource.on('changed', function() {
-            map.render();
-        });
-
-        // Элементы управления
-        const blurInput = document.getElementById('blur');
-        const radiusInput = document.getElementById('radius');
-        const blurValue = document.getElementById('blur-value');
-        const radiusValue = document.getElementById('radius-value');
-        const coordsElement = document.getElementById('mouse-coords');
-        const popupElement = document.getElementById('popup');
-        const toggleButton = document.getElementById('toggle-layers');
-        const clearDbButton = document.getElementById('clear-db');
-
-        // Оверлей для подсказки
-        const overlay = new ol.Overlay({
-            element: popupElement,
-            positioning: 'bottom-center',
-            stopEvent: false
-        });
-        map.addOverlay(overlay);
-
-        // Обработчики событий
-        map.on('pointermove', (evt) => {
-            if (evt.dragging) return;
-            
-            // Обновление координат
-            const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-            coordsElement.textContent = 
-                `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
-            
-            // Изменение курсора
-            map.getTargetElement().style.cursor = map.hasFeatureAtPixel(evt.pixel) 
-                ? 'pointer' 
-                : 'default';
-        });
-
-        map.on('click', (evt) => {
-            const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
-            
-            if (feature) {
-                popupElement.textContent = `Значение: ${feature.get('f3')}`;
-                overlay.setPosition(evt.coordinate);
-                popupElement.style.display = 'block';
-            } else {
-                popupElement.style.display = 'none';
-            }
-        });
-
-        // Управление слоями
-        let layersVisible = true;
-        toggleButton.addEventListener('click', () => {
-            layersVisible = !layersVisible;
-            pointLayer.setVisible(layersVisible);
-            toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
-        });
-
-        // Управление параметрами тепловой карты
-        blurInput.addEventListener('input', () => {
-            heatmapLayer.setBlur(parseInt(blurInput.value));
-            blurValue.textContent = blurInput.value;
-        });
-
-        radiusInput.addEventListener('input', () => {
-            heatmapLayer.setRadius(parseInt(radiusInput.value));
-            radiusValue.textContent = radiusInput.value;
-        });
-
-        // Функция для очистки базы данных
-        clearDbButton.addEventListener('click', function() {
-            if (confirm('Вы уверены, что хотите очистить базу данных? Все данные будут удалены.')) {
-                fetch('/clear-db/', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        alert('База данных очищена');
-                        // Очищаем точки на карте
-                        vectorSource.clear();
-                    } else {
-                        alert('Ошибка: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    alert('Ошибка сети: ' + error);
-                });
-            }
-        });
-
-        // Функция для получения CSRF токена
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
+            // Добавление слоев
+            map.addLayer(heatmapLayer);
+            map.addLayer(pointLayer);
         }
 
-        // Инициализация значений
-        blurValue.textContent = blurInput.value;
-        radiusValue.textContent = radiusInput.value;
+        // Загрузка начальных данных
+        function loadInitialData() {
+            try {
+                const points = {{ context|safe }};
+                const features = new ol.format.GeoJSON().readFeatures(points, {
+                    featureProjection: 'EPSG:3857'
+                });
+                vectorSource.addFeatures(features);
+            } catch (e) {
+                console.error('Ошибка загрузки начальных данных:', e);
+            }
+        }
+
+        // Обновление точек с сервера
+        async function updatePoints() {
+            try {
+                const response = await fetch('/geojson-data/');
+                if (!response.ok) throw new Error('Ошибка сети');
+                
+                const data = await response.json();
+                const features = new ol.format.GeoJSON().readFeatures(data, {
+                    featureProjection: 'EPSG:3857'
+                });
+                
+                // Обновляем только если есть изменения
+                if (features.length !== vectorSource.getFeatures().length) {
+                    vectorSource.clear();
+                    vectorSource.addFeatures(features);
+                    lastUpdate = Date.now();
+                }
+            } catch (error) {
+                console.error('Ошибка при обновлении точек:', error);
+            }
+        }
+
+        // Инициализация элементов управления
+        function initControls() {
+            const blurInput = document.getElementById('blur');
+            const radiusInput = document.getElementById('radius');
+            const blurValue = document.getElementById('blur-value');
+            const radiusValue = document.getElementById('radius-value');
+            const coordsElement = document.getElementById('mouse-coords');
+            const popupElement = document.getElementById('popup');
+            const toggleButton = document.getElementById('toggle-layers');
+            const clearDbButton = document.getElementById('clear-db');
+            const confirmDialog = document.getElementById('confirm-dialog');
+            const confirmCancel = document.getElementById('confirm-cancel');
+            const confirmOk = document.getElementById('confirm-ok');
+
+            // Оверлей для подсказки
+            const overlay = new ol.Overlay({
+                element: popupElement,
+                positioning: 'bottom-center',
+                stopEvent: false
+            });
+            map.addOverlay(overlay);
+
+            // Обработчики событий карты
+            map.on('pointermove', (evt) => {
+                if (evt.dragging) return;
+                
+                // Обновление координат
+                const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+                coordsElement.textContent = 
+                    `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
+                
+                // Изменение курсора
+                map.getTargetElement().style.cursor = map.hasFeatureAtPixel(evt.pixel) 
+                    ? 'pointer' 
+                    : 'default';
+            });
+
+            map.on('click', (evt) => {
+                const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
+                
+                if (feature) {
+                    popupElement.textContent = `Значение: ${feature.get('f3')}`;
+                    overlay.setPosition(evt.coordinate);
+                    popupElement.style.display = 'block';
+                } else {
+                    popupElement.style.display = 'none';
+                }
+            });
+
+            // Управление слоями
+            let layersVisible = true;
+            toggleButton.addEventListener('click', () => {
+                layersVisible = !layersVisible;
+                pointLayer.setVisible(layersVisible);
+                toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
+            });
+
+            // Управление параметрами тепловой карты
+            blurInput.addEventListener('input', () => {
+                heatmapLayer.setBlur(parseInt(blurInput.value));
+                blurValue.textContent = blurInput.value;
+            });
+
+            radiusInput.addEventListener('input', () => {
+                heatmapLayer.setRadius(parseInt(radiusInput.value));
+                radiusValue.textContent = radiusInput.value;
+            });
+
+            // Функция для очистки базы данных
+            clearDbButton.addEventListener('click', function() {
+                confirmDialog.style.display = 'flex';
+            });
+            
+            // Обработчики для модального окна
+            confirmCancel.addEventListener('click', function() {
+                confirmDialog.style.display = 'none';
+            });
+            
+            confirmOk.addEventListener('click', function() {
+                confirmDialog.style.display = 'none';
+                
+                // Получаем CSRF токен через GET-запрос
+                fetch('/get-csrf-token/')
+                .then(response => response.json())
+                .then(data => {
+                    const csrftoken = data.csrfToken;
+                    
+                    fetch('/clear-db/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Ошибка сети');
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            vectorSource.clear();
+                            lastUpdate = 0; // Сбрасываем время последнего обновления
+                        } else {
+                            console.error('Ошибка очистки базы данных:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при очистке базы данных:', error);
+                    });
+                })
+                .catch(error => {
+                    console.error('Ошибка получения CSRF токена:', error);
+                });
+            });
+            
+            // Закрытие модального окна при клике вне его области
+            window.addEventListener('click', function(event) {
+                if (event.target === confirmDialog) {
+                    confirmDialog.style.display = 'none';
+                }
+            });
+
+            // Инициализация значений
+            blurValue.textContent = blurInput.value;
+            radiusValue.textContent = radiusInput.value;
+        }
+
+        // Запуск периодического обновления в асинхронном режиме
+        function startAutoUpdate() {
+            updateInterval = setInterval(async () => {
+                await updatePoints();
+            }, 5000);
+        }
+
+        // Остановка обновления при закрытии страницы
+        function setupCleanup() {
+            window.addEventListener('beforeunload', () => {
+                clearInterval(updateInterval);
+            });
+        }
+
+        // Основная функция инициализации
+        function init() {
+            initMap();
+            loadInitialData();
+            initControls();
+            startAutoUpdate();
+            setupCleanup();
+            
+            // Первое обновление через 1 секунду после загрузки
+            setTimeout(updatePoints, 1000);
+        }
+
+        // Запуск приложения после загрузки страницы
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import os
 import time
-import threading
+import threading # для потоков
 from django.apps import AppConfig
 
 
@@ -15,7 +15,6 @@ class GisappConfig(AppConfig):
         """
         from .models import ValuesPoints
         from .importer import DataImporter
-        # Create an instance of the DataImporter class
         importer = DataImporter()
         # Start the DataImporter thread
         importer.start()

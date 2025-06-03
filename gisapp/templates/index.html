@@ -5,10 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heatmap</title>
-    <!-- Онлайн -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css"> -->
-    <!-- Оффлайн -->
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
 </head>
@@ -253,196 +249,292 @@
     </style>
 
     <script>
+        // Основные переменные
+        let map;
+        let vectorSource;
+        let heatmapLayer;
+        let pointLayer;
+        let updateInterval;
+        let lastDataSignature = null;
+
         // Инициализация карты
-        const map = new ol.Map({
-            target: 'map',
-            view: new ol.View({
-                center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
-                zoom: 22
-            }),
-            layers: [
-                new ol.layer.Tile({
-                    source: new ol.source.OSM( {
-                        url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        function initMap() {
+            map = new ol.Map({
+                target: 'map',
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
+                    zoom: 22
+                }),
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM({
+                            url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        })
+                    })
+                ]
+            });
+
+            vectorSource = new ol.source.Vector();
+            
+            // Инициализация слоев
+            heatmapLayer = new ol.layer.Heatmap({
+                source: vectorSource,
+                blur: 45,
+                radius: 8,
+                weight: 'weight'
+            });
+
+            pointLayer = new ol.layer.Vector({
+                source: vectorSource,
+                style: new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 2,
+                        fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }),
+                        stroke: new ol.style.Stroke({
+                            color: 'rgba(100, 100, 100, 0.9)',
+                            width: 1
+                        })
                     })
                 })
-            ]
-            // layers: [
-            //     new ol.layer.Tile({
-            //     source: new ol.source.XYZ({
-            //         url: '/static/tiles/{z}/{x}/{y}.png'
-            //         })
-            //     })
-            // ]
-        });
+            });
 
-        // Загрузка данных
-        const points = {{ context|safe }};
+            // Добавление слоев
+            map.addLayer(heatmapLayer);
+            map.addLayer(pointLayer);
+        }
 
-        const vectorSource = new ol.source.Vector({
-            features: new ol.format.GeoJSON().readFeatures(points, {
-                featureProjection: 'EPSG:3857'
-            })
-        });
-
-        // Инициализация слоев
-        const heatmapLayer = new ol.layer.Heatmap({
-            source: vectorSource,
-            blur: 45,
-            radius: 8,
-            weight: 'weight'
-        });
-
-        const pointLayer = new ol.layer.Vector({
-            source: vectorSource,
-            style: new ol.style.Style({
-                image: new ol.style.Circle({
-                    radius: 2,
-                    fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }),
-                    stroke: new ol.style.Stroke({
-                        color: 'rgba(100, 100, 100, 0.9)',
-                        width: 1
-                    })
-                })
-            })
-        });
-
-        // Добавление слоев
-        map.addLayer(heatmapLayer);
-        map.addLayer(pointLayer);
-
-        // Обновление карты при изменении источника данных
-        vectorSource.on('changed', function() {
-            map.render();
-        });
-
-        // Элементы управления
-        const blurInput = document.getElementById('blur');
-        const radiusInput = document.getElementById('radius');
-        const blurValue = document.getElementById('blur-value');
-        const radiusValue = document.getElementById('radius-value');
-        const coordsElement = document.getElementById('mouse-coords');
-        const popupElement = document.getElementById('popup');
-        const toggleButton = document.getElementById('toggle-layers');
-        const clearDbButton = document.getElementById('clear-db');
-        const confirmDialog = document.getElementById('confirm-dialog');
-        const confirmCancel = document.getElementById('confirm-cancel');
-        const confirmOk = document.getElementById('confirm-ok');
-
-        // Оверлей для подсказки
-        const overlay = new ol.Overlay({
-            element: popupElement,
-            positioning: 'bottom-center',
-            stopEvent: false
-        });
-        map.addOverlay(overlay);
-
-        // Обработчики событий
-        map.on('pointermove', (evt) => {
-            if (evt.dragging) return;
-            
-            // Обновление координат
-            const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-            coordsElement.textContent = 
-                `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
-            
-            // Изменение курсора
-            map.getTargetElement().style.cursor = map.hasFeatureAtPixel(evt.pixel) 
-                ? 'pointer' 
-                : 'default';
-        });
-
-        map.on('click', (evt) => {
-            const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
-            
-            if (feature) {
-                popupElement.textContent = `Значение: ${feature.get('f3')}`;
-                overlay.setPosition(evt.coordinate);
-                popupElement.style.display = 'block';
-            } else {
-                popupElement.style.display = 'none';
-            }
-        });
-
-        // Управление слоями
-        let layersVisible = true;
-        toggleButton.addEventListener('click', () => {
-            layersVisible = !layersVisible;
-            pointLayer.setVisible(layersVisible);
-            toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
-        });
-
-        // Управление параметрами тепловой карты
-        blurInput.addEventListener('input', () => {
-            heatmapLayer.setBlur(parseInt(blurInput.value));
-            blurValue.textContent = blurInput.value;
-        });
-
-        radiusInput.addEventListener('input', () => {
-            heatmapLayer.setRadius(parseInt(radiusInput.value));
-            radiusValue.textContent = radiusInput.value;
-        });
-
-        // Функция для очистки базы данных
-        clearDbButton.addEventListener('click', function() {
-            confirmDialog.style.display = 'flex';
-        });
-        
-        // Обработчики для модального окна
-        confirmCancel.addEventListener('click', function() {
-            confirmDialog.style.display = 'none';
-        });
-        
-        confirmOk.addEventListener('click', function() {
-            confirmDialog.style.display = 'none';
-            
-            // Получаем CSRF токен через GET-запрос
-            fetch('/get-csrf-token/')
-            .then(response => response.json())
-            .then(data => {
-                const csrftoken = data.csrfToken;
+        // Загрузка начальных данных
+        function loadInitialData() {
+            try {
+                const points = {{ context|safe }};
+                const features = new ol.format.GeoJSON().readFeatures(points, {
+                    featureProjection: 'EPSG:3857'
+                });
+                vectorSource.addFeatures(features);
                 
-                fetch('/clear-db/', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrftoken,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})  // Пустое тело запроса
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
+                // Инициализируем подпись данных
+                lastDataSignature = calculateDataSignature(features);
+            } catch (e) {
+                console.error('Ошибка загрузки начальных данных:', e);
+            }
+        }
+
+        // Функция для вычисления подписи данных
+        function calculateDataSignature(features) {
+            if (features.length === 0) return 'empty';
+            
+            let signature = '';
+            features.forEach(feature => {
+                const coords = feature.getGeometry().getCoordinates();
+                signature += `${coords[0]},${coords[1]},${feature.get('f3') || 0}|`;
+            });
+            return signature;
+        }
+
+        // Проверка изменений данных
+        async function checkDataChanges() {
+            try {
+                const response = await fetch('/geojson-data/');
+                if (!response.ok) throw new Error('Ошибка сети');
+                
+                const data = await response.json();
+                const features = new ol.format.GeoJSON().readFeatures(data, {
+                    featureProjection: 'EPSG:3857'
+                });
+                
+                // Вычисляем текущую подпись
+                const currentSignature = calculateDataSignature(features);
+                
+                // Сравниваем с последней известной подписью
+                if (currentSignature !== lastDataSignature) {
+                    // Обновляем данные на карте
+                    vectorSource.clear();
+                    vectorSource.addFeatures(features);
+                    lastDataSignature = currentSignature;
+                    console.log('Данные обновлены. Новых точек:', features.length);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Ошибка при проверке данных:', error);
+                return false;
+            }
+        }
+
+        // Инициализация элементов управления
+        function initControls() {
+            const blurInput = document.getElementById('blur');
+            const radiusInput = document.getElementById('radius');
+            const blurValue = document.getElementById('blur-value');
+            const radiusValue = document.getElementById('radius-value');
+            const coordsElement = document.getElementById('mouse-coords');
+            const popupElement = document.getElementById('popup');
+            const toggleButton = document.getElementById('toggle-layers');
+            const clearDbButton = document.getElementById('clear-db');
+            const confirmDialog = document.getElementById('confirm-dialog');
+            const confirmCancel = document.getElementById('confirm-cancel');
+            const confirmOk = document.getElementById('confirm-ok');
+
+            // Оверлей для подсказки
+            const overlay = new ol.Overlay({
+                element: popupElement,
+                positioning: 'bottom-center',
+                stopEvent: false
+            });
+            map.addOverlay(overlay);
+
+            // Обработчики событий карты
+            map.on('pointermove', (evt) => {
+                if (evt.dragging) return;
+                
+                // Обновление координат
+                const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+                coordsElement.textContent = 
+                    `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
+                
+                // Изменение курсора
+                map.getTargetElement().style.cursor = map.hasFeatureAtPixel(evt.pixel) 
+                    ? 'pointer' 
+                    : 'default';
+            });
+
+            map.on('click', (evt) => {
+                const feature = map.forEachFeatureAtPixel(evt.pixel, (f) => f);
+                
+                if (feature) {
+                    popupElement.textContent = `Значение: ${feature.get('f3')}`;
+                    overlay.setPosition(evt.coordinate);
+                    popupElement.style.display = 'block';
+                } else {
+                    popupElement.style.display = 'none';
+                }
+            });
+
+            // Управление слоями
+            let layersVisible = true;
+            toggleButton.addEventListener('click', () => {
+                layersVisible = !layersVisible;
+                pointLayer.setVisible(layersVisible);
+                toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
+            });
+
+            // Управление параметрами тепловой карты
+            blurInput.addEventListener('input', () => {
+                heatmapLayer.setBlur(parseInt(blurInput.value));
+                blurValue.textContent = blurInput.value;
+            });
+
+            radiusInput.addEventListener('input', () => {
+                heatmapLayer.setRadius(parseInt(radiusInput.value));
+                radiusValue.textContent = radiusInput.value;
+            });
+
+            // Функция для очистки базы данных
+            clearDbButton.addEventListener('click', function() {
+                confirmDialog.style.display = 'flex';
+            });
+            
+            // Обработчики для модального окна
+            confirmCancel.addEventListener('click', function() {
+                confirmDialog.style.display = 'none';
+            });
+            
+            confirmOk.addEventListener('click', function() {
+                confirmDialog.style.display = 'none';
+                
+                // Получаем CSRF токен через GET-запрос
+                fetch('/get-csrf-token/')
+                .then(response => response.json())
                 .then(data => {
-                    if (data.status === 'success') {
-                        vectorSource.clear();
-                    } else {
-                        console.error('Ошибка очистки базы данных:', data.message);
-                    }
+                    const csrftoken = data.csrfToken;
+                    
+                    fetch('/clear-db/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Ошибка сети');
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.status === 'success') {
+                            vectorSource.clear();
+                            lastDataSignature = null;
+                            console.log('База данных очищена');
+                        } else {
+                            console.error('Ошибка очистки базы данных:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при очистке базы данных:', error);
+                    });
                 })
                 .catch(error => {
-                    console.error('Ошибка при очистке базы данных:', error);
+                    console.error('Ошибка получения CSRF токена:', error);
                 });
-            })
-            .catch(error => {
-                console.error('Ошибка получения CSRF токена:', error);
             });
-        });
-        
-        // Закрытие модального окна при клике вне его области
-        window.addEventListener('click', function(event) {
-            if (event.target === confirmDialog) {
-                confirmDialog.style.display = 'none';
-            }
-        });
+            
+            // Закрытие модального окна при клике вне его области
+            window.addEventListener('click', function(event) {
+                if (event.target === confirmDialog) {
+                    confirmDialog.style.display = 'none';
+                }
+            });
 
-        // Инициализация значений
-        blurValue.textContent = blurInput.value;
-        radiusValue.textContent = radiusInput.value;
+            // Инициализация значений
+            blurValue.textContent = blurInput.value;
+            radiusValue.textContent = radiusInput.value;
+        }
+
+        // Запуск проверки изменений
+        function startDataMonitoring() {
+            // Создаем EventSource для получения уведомлений от сервера
+            const eventSource = new EventSource('/data-updates/');
+            
+            eventSource.onmessage = async (event) => {
+                console.log('Получено обновление данных от сервера');
+                const changed = await checkDataChanges();
+                if (changed) {
+                    console.log('Данные успешно обновлены');
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('Ошибка SSE:', error);
+                // Перезапускаем подключение при ошибке
+                setTimeout(startDataMonitoring, 5000);
+            };
+            
+            return eventSource;
+        }
+
+        // Остановка обновления при закрытии страницы
+        function setupCleanup(eventSource) {
+            window.addEventListener('beforeunload', () => {
+                if (eventSource) {
+                    eventSource.close();
+                }
+            });
+        }
+
+        // Основная функция инициализации
+        function init() {
+            initMap();
+            loadInitialData();
+            initControls();
+            
+            // Запускаем мониторинг изменений данных
+            const eventSource = startDataMonitoring();
+            setupCleanup(eventSource);
+        }
+
+        // Запуск приложения после загрузки страницы
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

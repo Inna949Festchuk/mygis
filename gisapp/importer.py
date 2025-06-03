@@ -100,6 +100,7 @@ class DataImporter:
             try:
                 processed_path = self.processed_dir / f"{filepath.name}_{int(time.time())}"
                 filepath.replace(processed_path)
+                get_context_data()
             except Exception as e:
                 logger.error(f"Error moving file {filepath}: {str(e)}")
 
