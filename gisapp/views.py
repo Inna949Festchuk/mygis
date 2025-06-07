@@ -64,6 +64,9 @@ def get_csrf_token(request):
 def data_updates(request):
     """Потоковое обновление данных через Server-Sent Events"""
     def event_stream():
+        """
+        Поток событий
+        """
         last_count = ValuesPoints.objects.count() # получаем предыдущее количество объектов
         while True:
             time.sleep(1)  # Проверяем каждую секунду
@@ -78,5 +81,5 @@ def data_updates(request):
         event_stream(),
         content_type='text/event-stream'
     )
-    response['Cache-Control'] = 'no-cache' # отключаем кэширование
+    response['Cache-Control'] = 'no-cache' # отключаем кэширование 
     return response
