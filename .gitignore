@@ -5,4 +5,7 @@ gisapp/__pycache__/
 gisapp/indata/processed/
 gisapp/static/tiles/
 gisapp/static/tiles.zip
+BD-09toWGS84.py
+chinese_coordinate_converter-0.1.0.zip
+chinese_coordinate_converter/
 # .env
