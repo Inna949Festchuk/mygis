@@ -256,6 +256,33 @@
             animation: spin 1s linear infinite;
         }
         
+        .osm-loading {
+            display: flex;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            z-index: 3000;
+            font-size: 16px;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .osm-loading::after {
+            content: "";
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -290,7 +317,7 @@
                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
         </button>
-        <button id="export-map" class="export-button" title="Экспорт карты в BMP">
+        <button id="export-map" class="export-button" title="Экспорт карты в PNG">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
@@ -301,14 +328,8 @@
 
     <!-- Блок управления загрузкой OSM -->
     <div id="osm-control" class="control-box">
-        <button id="draw-osm-rect">Выбрать область загрузки OSM</button>
+        <button id="draw-osm-rect">🟩 Выбрать область загрузки OSM</button>
     </div>
-
-    <!-- Форма для отправки данных OSM -->
-    <form id="osm-form" method="post" action="{% url 'load_my_osm' %}">
-        {% csrf_token %}
-        <input type="hidden" name="bbox" id="bbox-input">
-    </form>
 
     <!-- Блок управления параметрами тепловой карты -->
     <div id="controls" class="control-box">
@@ -345,6 +366,7 @@
         let osmVectorSource;
         let osmVectorLayer;
         let drawInteraction = null;
+        let csrfToken = "{{ csrf_token }}";  // Получаем CSRF токен
 
         // Инициализация карты
         function initMap() {
@@ -563,6 +585,40 @@
             }
         }
 
+        // Загрузка данных OSM
+        function loadOSMData(bbox) {
+            // Создаем индикатор загрузки
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'osm-loading';
+            loadingIndicator.innerHTML = 'Загрузка данных OSM... <span></span>';
+            document.body.appendChild(loadingIndicator);
+            
+            fetch('/load_osm/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ bbox: bbox })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Данные OSM успешно загружены в PostGIS!');
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке OSM:', error);
+                alert('Сетевая ошибка: ' + error.message);
+            })
+            .finally(() => {
+                // Удаляем индикатор загрузки
+                document.body.removeChild(loadingIndicator);
+            });
+        }
+
         // Инициализация элементов управления
         function initControls() {
             const blurInput = document.getElementById('blur');
@@ -627,7 +683,7 @@
                 radiusValue.textContent = radiusInput.value;
             });
 
-            // Экспорт карты в BMP
+            // Экспорт карты в PNG
             exportButton.addEventListener('click', exportMapToBMP);
 
             // Функция для очистки базы данных
@@ -717,13 +773,7 @@
                     const bbox = [
                         minCoord[0], minCoord[1],
                         maxCoord[0], maxCoord[1]
-                    ].join(',');
-                    
-                    // Устанавливаем значение скрытого поля
-                    document.getElementById('bbox-input').value = bbox;
-                    
-                    // Отправляем форму
-                    document.getElementById('osm-form').submit();
+                    ];
                     
                     // Показываем индикатор загрузки
                     drawOsmButton.innerHTML = '⏳ Загрузка данных OSM...';
@@ -732,6 +782,15 @@
                     // Удаляем взаимодействие рисования
                     map.removeInteraction(drawInteraction);
                     drawInteraction = null;
+                    
+                    // Загружаем данные OSM
+                    loadOSMData(bbox);
+                    
+                    // Восстанавливаем кнопку через 5 секунд (на случай ошибки)
+                    setTimeout(() => {
+                        drawOsmButton.innerHTML = '🟩 Выбрать область загрузки OSM';
+                        drawOsmButton.disabled = false;
+                    }, 5000);
                 });
             });
 

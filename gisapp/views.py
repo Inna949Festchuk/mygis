@@ -10,7 +10,7 @@ from django.middleware.csrf import get_token
 from .models import ValuesPoints
 from django.http import JsonResponse
 
-
+import requests
 import os
 import subprocess
 import tempfile
@@ -93,31 +93,47 @@ def data_updates(request):
     return response
 
 
-
  
 @csrf_exempt
-def load_my_osm(request):
+def load_osm(request):
     if request.method == 'POST':
         try:
-            bbox = request.POST.get('bbox')
-            if not bbox:
-                return JsonResponse({'status': 'error', 'message': 'Missing bbox parameter'})
+            # Получаем bbox из запроса
+            bbox_str = request.POST.get('bbox', '')
+            bbox = [float(coord) for coord in bbox_str.split(',')]
             
-            # Преобразуем строку bbox в список координат
-            try:
-                coords = [float(x) for x in bbox.split(',')]
-                if len(coords) != 4:
-                    raise ValueError
-            except (ValueError, TypeError):
+            if len(bbox) != 4:
                 return JsonResponse({'status': 'error', 'message': 'Invalid bbox format'})
             
-            # Создаем полигон для проверки
-            bbox_polygon = Polygon.from_bbox(coords)
+            # Форматируем bbox для Overpass API (south, west, north, east)
+            south, west, north, east = bbox[1], bbox[0], bbox[3], bbox[2]
             
-            # Скачиваем данные OSM
-            osm_file = get_osm_data(bbox_polygon)
+            # Создаем корректный запрос к Overpass API
+            overpass_query = f"""
+                [out:xml][timeout:180];
+                (
+                    node({south}, {west}, {north}, {east});
+                    way({south}, {west}, {north}, {east});
+                    relation({south}, {west}, {north}, {east});
+                );
+                (._;>;);
+                out body;
+            """
             
-            # Загружаем в PostGIS с помощью osm2pgsql
+            # Отправляем запрос к Overpass API
+            response = requests.post(
+                'https://overpass-api.de/api/interpreter',
+                data=overpass_query,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+            response.raise_for_status()
+            
+            # Сохраняем ответ во временный файл
+            with tempfile.NamedTemporaryFile(suffix='.osm', delete=False) as tmpfile:
+                tmpfile.write(response.content)
+                osm_file_path = tmpfile.name
+            
+            # Параметры подключения к БД
             db_config = settings.DATABASES['default']
             cmd = [
                 'osm2pgsql',
@@ -130,12 +146,13 @@ def load_my_osm(request):
                 '--username', db_config['USER'],
                 '--host', db_config['HOST'] or 'localhost',
                 '--port', db_config['PORT'] or '5432',
-                osm_file.name
+                osm_file_path
             ]
             
             env = os.environ.copy()
             env['PGPASSWORD'] = db_config['PASSWORD']
             
+            # Запускаем процесс
             result = subprocess.run(
                 cmd,
                 env=env,
@@ -143,8 +160,11 @@ def load_my_osm(request):
                 text=True
             )
             
+            # Удаляем временный файл
+            os.unlink(osm_file_path)
+            
             if result.returncode == 0:
-                return JsonResponse({'status': 'success', 'message': 'Данные успешно загружены'})
+                return JsonResponse({'status': 'success', 'message': 'Данные успешно загружены в PostGIS'})
             else:
                 return JsonResponse({
                     'status': 'error',
