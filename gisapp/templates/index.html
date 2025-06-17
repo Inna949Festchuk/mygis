@@ -4,19 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heatmap</title>
+    <title>Heatmap with OSM Loader</title>
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
-
     <script src="{% static 'js/ol-popup.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol-popup.css' %}">
-    
-    <!-- Онлайн -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css"> -->
-
-    <!-- <script src="https://cdn.jsdelivr.net/npm/ol-popup@5.0.0/dist/ol-popup.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol-popup@5.0.0/src/ol-popup.css"> -->
     
     <style>
         html, body {
@@ -74,6 +66,27 @@
 
         .export-button:hover {
             color: #3498db;
+        }
+
+        #osm-control {
+            top: 15px;
+            left: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        #osm-control button {
+            background: rgba(240, 240, 240, 0.9);
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        #osm-control button:hover {
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         #controls {
@@ -269,6 +282,7 @@
         </div>
     </div>
     
+    <!-- Блок управления слоями -->
     <div id="layer-control" class="control-box">
         <button id="toggle-layers">Скрыть точки</button>
         <button id="clear-db" class="trash-button" title="Очистить базу данных">
@@ -285,6 +299,18 @@
         </button>
     </div>
 
+    <!-- Блок управления загрузкой OSM -->
+    <div id="osm-control" class="control-box">
+        <button id="draw-osm-rect">Выбрать область загрузки OSM</button>
+    </div>
+
+    <!-- Форма для отправки данных OSM -->
+    <form id="osm-form" method="post" action="{% url 'load_my_osm' %}">
+        {% csrf_token %}
+        <input type="hidden" name="bbox" id="bbox-input">
+    </form>
+
+    <!-- Блок управления параметрами тепловой карты -->
     <div id="controls" class="control-box">
         <div class="control-group">
             <label for="blur">Размытие:</label>
@@ -314,6 +340,11 @@
         let lastRenderTime = 0;
         let popup;
         let dataCheckInterval;
+        
+        // Переменные для OSM загрузки
+        let osmVectorSource;
+        let osmVectorLayer;
+        let drawInteraction = null;
 
         // Инициализация карты
         function initMap() {
@@ -327,13 +358,6 @@
                         })
                     })
                 ],
-                // layers: [
-                //     new ol.layer.Tile({
-                //         source: new ol.source.XYZ({
-                //             url: '/static/tiles/{z}/{x}/{y}.png'
-                //         })
-                //     })
-                // ],
                 view: new ol.View({
                     center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
                     zoom: 24
@@ -351,6 +375,7 @@
             });
             map.addOverlay(popup);
 
+            // Источник для тепловой карты
             vectorSource = new ol.source.Vector({ wrapX: false });
             
             // Тепловая карта
@@ -378,8 +403,25 @@
                 renderMode: 'image'
             });
 
+            // Слой для ограничивающего прямоугольника OSM
+            osmVectorSource = new ol.source.Vector({ wrapX: false });
+            osmVectorLayer = new ol.layer.Vector({
+                source: osmVectorSource,
+                style: new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: 'rgba(255, 0, 0, 0.8)',
+                        width: 2
+                    }),
+                    fill: new ol.style.Fill({
+                        color: 'rgba(255, 0, 0, 0.1)'
+                    })
+                })
+            });
+
+            // Добавляем слои на карту
             map.addLayer(heatmapLayer);
             map.addLayer(pointLayer);
+            map.addLayer(osmVectorLayer);
             
             // Кешируем разрешение карты 
             resolution = map.getView().getResolution();
@@ -531,6 +573,7 @@
             const toggleButton = document.getElementById('toggle-layers');
             const clearDbButton = document.getElementById('clear-db');
             const exportButton = document.getElementById('export-map');
+            const drawOsmButton = document.getElementById('draw-osm-rect');
             const confirmDialog = document.getElementById('confirm-dialog');
             const confirmCancel = document.getElementById('confirm-cancel');
             const confirmOk = document.getElementById('confirm-ok');
@@ -641,6 +684,55 @@
                 if (event.target === confirmDialog) {
                     confirmDialog.style.display = 'none';
                 }
+            });
+
+            // Обработчик для кнопки загрузки OSM
+            drawOsmButton.addEventListener('click', function() {
+                // Очищаем предыдущий прямоугольник
+                osmVectorSource.clear();
+                
+                if (drawInteraction) {
+                    map.removeInteraction(drawInteraction);
+                }
+                
+                // Создаем инструмент рисования прямоугольника
+                drawInteraction = new ol.interaction.Draw({
+                    source: osmVectorSource,
+                    type: 'Circle',
+                    geometryFunction: ol.interaction.Draw.createBox()
+                });
+                
+                map.addInteraction(drawInteraction);
+                
+                // При завершении рисования
+                drawInteraction.on('drawend', function(event) {
+                    const geometry = event.feature.getGeometry();
+                    const extent = geometry.getExtent();
+                    
+                    // Преобразуем координаты в WGS84
+                    const minCoord = ol.proj.toLonLat([extent[0], extent[1]]);
+                    const maxCoord = ol.proj.toLonLat([extent[2], extent[3]]);
+                    
+                    // Форматируем bbox
+                    const bbox = [
+                        minCoord[0], minCoord[1],
+                        maxCoord[0], maxCoord[1]
+                    ].join(',');
+                    
+                    // Устанавливаем значение скрытого поля
+                    document.getElementById('bbox-input').value = bbox;
+                    
+                    // Отправляем форму
+                    document.getElementById('osm-form').submit();
+                    
+                    // Показываем индикатор загрузки
+                    drawOsmButton.innerHTML = '⏳ Загрузка данных OSM...';
+                    drawOsmButton.disabled = true;
+
+                    // Удаляем взаимодействие рисования
+                    map.removeInteraction(drawInteraction);
+                    drawInteraction = null;
+                });
             });
 
             // Инициализация значений

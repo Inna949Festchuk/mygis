@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+from django.conf import settings
 from django.http import StreamingHttpResponse
 from django.shortcuts import render
 from django.core.serializers import serialize
@@ -8,6 +9,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.middleware.csrf import get_token
 from .models import ValuesPoints
 from django.http import JsonResponse
+
+
+import os
+import subprocess
+import tempfile
+from django.contrib.gis.geos import Polygon
+from gisapp.utils import get_osm_data  
 
 
 logger = logging.getLogger(__name__)
@@ -83,3 +91,69 @@ def data_updates(request):
     )
     response['Cache-Control'] = 'no-cache' # отключаем кэширование 
     return response
+
+
+
+ 
+@csrf_exempt
+def load_my_osm(request):
+    if request.method == 'POST':
+        try:
+            bbox = request.POST.get('bbox')
+            if not bbox:
+                return JsonResponse({'status': 'error', 'message': 'Missing bbox parameter'})
+            
+            # Преобразуем строку bbox в список координат
+            try:
+                coords = [float(x) for x in bbox.split(',')]
+                if len(coords) != 4:
+                    raise ValueError
+            except (ValueError, TypeError):
+                return JsonResponse({'status': 'error', 'message': 'Invalid bbox format'})
+            
+            # Создаем полигон для проверки
+            bbox_polygon = Polygon.from_bbox(coords)
+            
+            # Скачиваем данные OSM
+            osm_file = get_osm_data(bbox_polygon)
+            
+            # Загружаем в PostGIS с помощью osm2pgsql
+            db_config = settings.DATABASES['default']
+            cmd = [
+                'osm2pgsql',
+                '--create',
+                '--slim',
+                '--hstore',
+                '--prefix', 'planet_osm',
+                '--proj', '3857',
+                '--database', db_config['NAME'],
+                '--username', db_config['USER'],
+                '--host', db_config['HOST'] or 'localhost',
+                '--port', db_config['PORT'] or '5432',
+                osm_file.name
+            ]
+            
+            env = os.environ.copy()
+            env['PGPASSWORD'] = db_config['PASSWORD']
+            
+            result = subprocess.run(
+                cmd,
+                env=env,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                return JsonResponse({'status': 'success', 'message': 'Данные успешно загружены'})
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Ошибка загрузки: {result.stderr}'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Системная ошибка: {str(e)}'
+            })
+    return JsonResponse({'status': 'error', 'message': 'Неверный метод запроса'})

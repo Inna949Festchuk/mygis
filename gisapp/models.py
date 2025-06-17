@@ -19,19 +19,36 @@ class ValuesPoints(models.Model):
     f2 = models.FloatField(null=True, blank=True)
     f3 = models.FloatField(null=True, blank=True)
     f12 = models.CharField(max_length=254, null=True, blank=True)
+    
     geom = models.MultiPointField(srid=4326, null=True, blank=True) # WGS84=EPSG:4326, WebMercator=EPSG:3857
 
 
+# Модели для данных OSM
 
-# @receiver(post_save, sender=ValuesPoints)
-# def update_context(sender, instance, created, **kwargs):
-#     if created:
-#         request = HttpRequest()
-#         request.method = 'GET'
-#         context = get_context_data(request)
-#         template = get_template('index.html')
-#         context = Context(context)
-#         html = template.render(context)
-#         # сохранить html в файл или отправить его клиенту
-#         return HttpResponse(html)
+class OSMPoint(models.Model):
+    osm_id = models.BigIntegerField()
+    tags = models.JSONField(default=dict)
+    geom = models.PointField(srid=3857)
+    
+    class Meta:
+        managed = False  # Таблица будет управляться osm2pgsql
+        db_table = 'planet_osm_point'
+
+class OSMLine(models.Model):
+    osm_id = models.BigIntegerField()
+    tags = models.JSONField(default=dict)
+    geom = models.LineStringField(srid=3857)
+    
+    class Meta:
+        managed = False
+        db_table = 'planet_osm_line'
+
+class OSMPolygon(models.Model):
+    osm_id = models.BigIntegerField()
+    tags = models.JSONField(default=dict)
+    geom = models.PolygonField(srid=3857)
+    
+    class Meta:
+        managed = False
+        db_table = 'planet_osm_polygon'
         

@@ -87,7 +87,7 @@ python3 manage.py startapp gisapp
 // source: new ol.source.OSM( )
 на
 source: new ol.source.XYZ({
-   url: 'gisapp/static/tiles/{z}/{x}/{y}.png'
+   url: '/static/tiles/{z}/{x}/{y}.png'
 })
 
 # РАЗВОРАЧИВАЕМ ПРИЛОЖЕНИЕ ручками
@@ -383,3 +383,23 @@ docker compose version
   ```
 
 - Актуальные версии Docker Compose смотрите на [GitHub](https://github.com/docker/compose/releases).
+
+
+
+
+# Векторные тайлы 
+
+# Для MacOS
+brew install osm2pgsql
+
+# Установите Python зависимости
+pip install pyosmium
+
+# Активируйте PostGIS в вашей БД
+psql -d your_db_name -c "CREATE EXTENSION postgis;"
+psql -d your_db_name -c "CREATE EXTENSION hstore;"
+
+# Для проверки загруженных данных
+SELECT * FROM planet_osm_point LIMIT 10;
+SELECT * FROM planet_osm_line LIMIT 10;
+SELECT * FROM planet_osm_polygon LIMIT 10;
