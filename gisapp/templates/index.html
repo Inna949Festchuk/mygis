@@ -229,7 +229,7 @@
             align-items: center;
         }
         
-        .export-loading {
+        .export-loading, .osm-loading {
             display: flex;
             position: fixed;
             top: 50%;
@@ -245,34 +245,7 @@
             gap: 10px;
         }
         
-        .export-loading::after {
-            content: "";
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        .osm-loading {
-            display: flex;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 5px;
-            z-index: 3000;
-            font-size: 16px;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .osm-loading::after {
+        .export-loading::after, .osm-loading::after {
             content: "";
             display: inline-block;
             width: 16px;
@@ -291,7 +264,6 @@
 
 <body>
     <div id="map" class="map"></div>
-    
     <div id="popup"></div>
     
     <div id="confirm-dialog" class="modal">
@@ -309,7 +281,6 @@
         </div>
     </div>
     
-    <!-- Блок управления слоями -->
     <div id="layer-control" class="control-box">
         <button id="toggle-layers">Скрыть точки</button>
         <button id="clear-db" class="trash-button" title="Очистить базу данных">
@@ -326,12 +297,10 @@
         </button>
     </div>
 
-    <!-- Блок управления загрузкой OSM -->
     <div id="osm-control" class="control-box">
         <button id="draw-osm-rect">🟩 Выбрать область загрузки OSM</button>
     </div>
 
-    <!-- Блок управления параметрами тепловой карты -->
     <div id="controls" class="control-box">
         <div class="control-group">
             <label for="blur">Размытие:</label>
@@ -361,12 +330,10 @@
         let lastRenderTime = 0;
         let popup;
         let dataCheckInterval;
-        
-        // Переменные для OSM загрузки
         let osmVectorSource;
         let osmVectorLayer;
         let drawInteraction = null;
-        let csrfToken = "{{ csrf_token }}";  // Получаем CSRF токен
+        const csrfToken = "{{ csrf_token }}";
 
         // Инициализация карты
         function initMap() {
@@ -514,39 +481,30 @@
 
         // Функция экспорта всей карты в PNG
         function exportMapToBMP() {
-            // Создаем индикатор загрузки
             const loadingIndicator = document.createElement('div');
             loadingIndicator.className = 'export-loading';
             loadingIndicator.innerHTML = 'Создание изображения... <span></span>';
             document.body.appendChild(loadingIndicator);
             
             try {
-                // Ожидаем полной отрисовки карты
                 map.once('rendercomplete', function() {
-                    // 1. Получаем размеры элемента карты
                     const size = map.getSize();
                     const width = size[0];
                     const height = size[1];
                     
-                    // 2. Создаем временный canvas
                     const tempCanvas = document.createElement('canvas');
                     tempCanvas.width = width;
                     tempCanvas.height = height;
                     const ctx = tempCanvas.getContext('2d');
                     
-                    // 3. Заливаем белым фоном (на случай прозрачных областей)
                     ctx.fillStyle = 'white';
                     ctx.fillRect(0, 0, width, height);
                     
-                    // 4. Собираем все canvas карты
                     const mapCanvases = document.querySelectorAll('.ol-viewport canvas');
                     
-                    // 5. Копируем все слои карты на временный canvas
                     mapCanvases.forEach(canvas => {
-                        // Пропускаем невидимые элементы
                         if (canvas.width === 0 || canvas.height === 0) return;
                         
-                        // Копируем с учетом смещения
                         const transform = canvas.style.transform;
                         if (transform) {
                             const matrix = transform.match(/matrix\(([^)]+)\)/)[1].split(',').map(Number);
@@ -557,10 +515,7 @@
                         ctx.setTransform(1, 0, 0, 1, 0, 0);
                     });
                     
-                    // 6. Преобразуем canvas в data URL (формат PNG)
                     const dataURL = tempCanvas.toDataURL('image/png');
-                    
-                    // 7. Создаем ссылку для скачивания
                     const link = document.createElement('a');
                     link.href = dataURL;
                     link.download = `map_export_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.png`;
@@ -568,16 +523,13 @@
                     document.body.appendChild(link);
                     link.click();
                     
-                    // 8. Очищаем ссылку после скачивания
                     setTimeout(() => {
                         document.body.removeChild(link);
                         document.body.removeChild(loadingIndicator);
                     }, 100);
                 });
                 
-                // Запускаем принудительную перерисовку карты
                 map.renderSync();
-                
             } catch (error) {
                 console.error('Ошибка экспорта:', error);
                 alert('Ошибка при экспорте: ' + error.message);
@@ -585,9 +537,21 @@
             }
         }
 
-        // Загрузка данных OSM
+        // Загрузка данных OSM (с усиленной проверкой)
         function loadOSMData(bbox) {
-            // Создаем индикатор загрузки
+            // Проверка координат перед отправкой
+            if (!bbox || bbox.length !== 4) {
+                alert('Ошибка: неверный формат координат');
+                return;
+            }
+            
+            for (let coord of bbox) {
+                if (isNaN(coord) || coord === null || coord === undefined) {
+                    alert('Ошибка: координаты содержат нечисловые значения');
+                    return;
+                }
+            }
+            
             const loadingIndicator = document.createElement('div');
             loadingIndicator.className = 'osm-loading';
             loadingIndicator.innerHTML = 'Загрузка данных OSM... <span></span>';
@@ -601,20 +565,24 @@
                 },
                 body: JSON.stringify({ bbox: bbox })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     alert('Данные OSM успешно загружены в PostGIS!');
                 } else {
-                    alert('Ошибка: ' + data.message);
+                    alert('Ошибка сервера: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('Ошибка при загрузке OSM:', error);
-                alert('Сетевая ошибка: ' + error.message);
+                alert('Ошибка сети: ' + error.message);
             })
             .finally(() => {
-                // Удаляем индикатор загрузки
                 document.body.removeChild(loadingIndicator);
             });
         }
@@ -637,25 +605,18 @@
             // Обработчик перемещения мыши
             map.on('pointermove', (evt) => {
                 if (evt.dragging) return;
+                if (Date.now() - lastRenderTime < 100) return;
+                lastRenderTime = Date.now();
                 
-                // Троттлинг событий (100 мс)
-                const now = Date.now();
-                if (now - lastRenderTime < 100) return;
-                lastRenderTime = now;
-                
-                // Обновление координат
                 const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-                coordsElement.textContent = 
-                    `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
+                coordsElement.textContent = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
                 
-                // Проверка наведения на точку
-                const feature = map.forEachFeatureAtPixel(evt.pixel, (feature) => feature, {
+                const feature = map.forEachFeatureAtPixel(evt.pixel, feature => feature, {
                     hitTolerance: 5,
                     layerFilter: layer => layer === pointLayer
                 });
 
                 if (feature) {
-                    // Показываем popup с информацией из поля f3
                     const value = feature.get('f3');
                     popup.show(evt.coordinate, `Значение: ${value}`);
                     map.getTargetElement().style.cursor = 'pointer';
@@ -698,60 +659,41 @@
             
             confirmOk.addEventListener('click', function() {
                 confirmDialog.style.display = 'none';
-                
-                // Получаем CSRF токен
                 fetch('/get-csrf-token/')
                 .then(response => response.json())
                 .then(data => {
-                    const csrftoken = data.csrfToken;
-                    
                     fetch('/clear-db/', {
                         method: 'POST',
                         headers: {
-                            'X-CSRFToken': csrftoken,
+                            'X-CSRFToken': data.csrfToken,
                             'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({})
+                        }
                     })
-                    .then(response => {
-                        if (!response.ok) throw new Error('Ошибка сети');
-                        return response.json();
-                    })
+                    .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
                             vectorSource.clear();
                             lastDataSignature = null;
                             console.log('База данных очищена');
-                        } else {
-                            console.error('Ошибка очистки базы данных:', data.message);
                         }
-                    })
-                    .catch(error => {
-                        console.error('Ошибка при очистке базы данных:', error);
                     });
-                })
-                .catch(error => {
-                    console.error('Ошибка получения CSRF токена:', error);
                 });
             });
             
-            // Закрытие модального окна при клике вне его области
             window.addEventListener('click', function(event) {
                 if (event.target === confirmDialog) {
                     confirmDialog.style.display = 'none';
                 }
             });
 
-            // Обработчик для кнопки загрузки OSM
+            // Обработчик для кнопки загрузки OSM (с улучшенной проверкой)
             drawOsmButton.addEventListener('click', function() {
-                // Очищаем предыдущий прямоугольник
                 osmVectorSource.clear();
                 
                 if (drawInteraction) {
                     map.removeInteraction(drawInteraction);
                 }
                 
-                // Создаем инструмент рисования прямоугольника
                 drawInteraction = new ol.interaction.Draw({
                     source: osmVectorSource,
                     type: 'Circle',
@@ -763,20 +705,39 @@
                 // При завершении рисования
                 drawInteraction.on('drawend', function(event) {
                     const geometry = event.feature.getGeometry();
+                    if (!geometry) {
+                        alert('Ошибка: не удалось получить геометрию');
+                        return;
+                    }
+                    
                     const extent = geometry.getExtent();
+                    if (!extent || extent.length !== 4) {
+                        alert('Ошибка: неверный формат экстента');
+                        return;
+                    }
                     
                     // Преобразуем координаты в WGS84
                     const minCoord = ol.proj.toLonLat([extent[0], extent[1]]);
                     const maxCoord = ol.proj.toLonLat([extent[2], extent[3]]);
                     
+                    // Проверяем координаты
+                    if (!minCoord || !maxCoord || 
+                        isNaN(minCoord[0]) || isNaN(minCoord[1]) || 
+                        isNaN(maxCoord[0]) || isNaN(maxCoord[1])) {
+                        alert('Ошибка: неверные координаты области');
+                        return;
+                    }
+                    
                     // Форматируем bbox
                     const bbox = [
-                        minCoord[0], minCoord[1],
-                        maxCoord[0], maxCoord[1]
+                        minCoord[0], 
+                        minCoord[1], 
+                        maxCoord[0], 
+                        maxCoord[1]
                     ];
                     
-                    // Показываем индикатор загрузки
-                    drawOsmButton.innerHTML = '⏳ Загрузка данных OSM...';
+                    // Обновляем состояние кнопки
+                    drawOsmButton.innerHTML = '⏳ Загрузка...';
                     drawOsmButton.disabled = true;
 
                     // Удаляем взаимодействие рисования
@@ -786,7 +747,7 @@
                     // Загружаем данные OSM
                     loadOSMData(bbox);
                     
-                    // Восстанавливаем кнопку через 5 секунд (на случай ошибки)
+                    // Восстанавливаем кнопку после завершения
                     setTimeout(() => {
                         drawOsmButton.innerHTML = '🟩 Выбрать область загрузки OSM';
                         drawOsmButton.disabled = false;
@@ -801,11 +762,9 @@
 
         // Запуск проверки изменений
         function startDataMonitoring() {
-            // Создаем EventSource для получения уведомлений от сервера
             eventSource = new EventSource('/data-updates/');
             
             eventSource.onmessage = async (event) => {
-                console.log('Получено обновление данных от сервера');
                 try {
                     await checkDataChanges();
                 } catch (e) {
@@ -819,25 +778,21 @@
                 setTimeout(startDataMonitoring, 5000);
             };
 
-            // Добавляем периодическую проверку на случай проблем с SSE
+            // Периодическая проверка
             dataCheckInterval = setInterval(async () => {
                 try {
                     await checkDataChanges();
                 } catch (e) {
                     console.error('Ошибка при периодической проверке данных:', e);
                 }
-            }, 30000); // Проверка каждые 30 секунд
+            }, 30000);
         }
 
         // Остановка обновления при закрытии страницы
         function setupCleanup() {
             window.addEventListener('beforeunload', () => {
-                if (eventSource) {
-                    eventSource.close();
-                }
-                if (dataCheckInterval) {
-                    clearInterval(dataCheckInterval);
-                }
+                if (eventSource) eventSource.close();
+                if (dataCheckInterval) clearInterval(dataCheckInterval);
             });
         }
 
@@ -846,8 +801,6 @@
             initMap();
             loadInitialData();
             initControls();
-            
-            // Запускаем мониторинг изменений данных
             startDataMonitoring();
             setupCleanup();
         }

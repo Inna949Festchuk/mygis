@@ -382,18 +382,189 @@ docker compose version
   newgrp docker  # Обновите сессию
   ```
 
+
+
+
+
 - Актуальные версии Docker Compose смотрите на [GitHub](https://github.com/docker/compose/releases).
 
+---
 
+17.06.2025
 
+---
 
 # Векторные тайлы 
 
-# Для MacOS
+# Для MacOS c помощью Homebrew
+brew install osmium-tool
+
+# (Установить osm2pgsql)[https://osm2pgsql.org/doc/install.html] 
+(и)[https://github.com/osm2pgsql-dev/osm2pgsql/blob/master/README.md]
+# Для MacOS c помощью Homebrew
 brew install osm2pgsql
 
+# или с помощью альтернативного менеджера пакетов MacPorts
+sudo port install osm2pgsql
+
+# или установить более старую версию 
+sudo port install osm2pgsql@1.11.0_2
+
+# или собрать 
+git clone https://github.com/osm2pgsql-dev/osm2pgsql
+cd osm2pgsql
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+
+## ! Внимание ! Для сборки этих компонентов необходимо сначала установить ряд зависимостей
+Это могут быть:
+CMake
+CLI11
+expat
+proj
+bzip2
+zlib
+Boost libraries (for boost geometry)
+nlohmann/json
+OpenCV (Optional, for generalization only)
+potrace (Optional, for generalization only)
+PostgreSQL client libraries
+Lua
+Python (only for running tests)
+Psycopg (only for running tests)
+
+## Например:
+
+Ошибка, с которой вы столкнулись при сборке `osm2pgsql`, связана с отсутствием библиотеки Lua. CMake не может найти необходимые файлы для Lua, что приводит к ошибке:
+
+```
+Could NOT find Lua (missing: LUA_LIBRARIES LUA_INCLUDE_DIR)
+```
+
+### Шаги для решения проблемы
+
+1. **Установите Lua**:
+   Убедитесь, что Lua установлен на вашем компьютере. Вы можете установить его через MacPorts или Homebrew. Например, если вы используете Homebrew, выполните следующую команду:
+
+   ```bash
+   brew install lua
+   ```
+
+   Если вы используете MacPorts, команда будет выглядеть так:
+
+   ```bash
+   sudo port install lua
+   ```
+
+2. **Проверьте наличие переменных окружения**:
+   После установки Lua проверьте, доступны ли переменные окружения `LUA_INCLUDE_DIR` и `LUA_LIBRARIES`. Если они не доступны, вам может понадобиться указать их вручную при запуске CMake.
+
+   Например, если у вас Lua установлен через Homebrew, вы можете указать следующие параметры:
+
+   ```bash
+   cmake .. -DLUA_INCLUDE_DIR=/usr/local/include -DLUA_LIBRARIES=/usr/local/lib/liblua.dylib
+   ```
+
+   Для MacPorts это может выглядеть так:
+
+   ```bash
+   cmake .. -DLUA_INCLUDE_DIR=/opt/local/include -DLUA_LIBRARIES=/opt/local/lib/liblua.dylib
+   ```
+
+3. **Перезапустите CMake**:
+   После установки нужных библиотек и указания переменных окружения перезапустите CMake в директории `build`:
+
+   ```bash
+   cmake ..
+   ```
+
+4. **Сборка проекта**:
+   Если CMake теперь конфигурируется без ошибок, вы можете продолжить сборку:
+
+   ```bash
+   make
+   sudo make install
+   ```
+
+### Если проблемы продолжаются
+
+Если после выполнения всех этих шагов проблема сохраняется, проверьте, установлены ли все необходимые зависимости и библиотеки для сборки `osm2pgsql`. Вы также можете проверить документацию проекта на GitHub для получения более подробной информации о необходимых зависимостях.
+
+Если вы переключились на другую ветку в вашем проекте `osm2pgsql` и хотите заново выполнить конфигурацию и сборку, следуйте этим шагам:
+
+### 1. Очистите предыдущую сборку
+
+Для начала вам нужно очистить предыдущие файлы сборки. Если вы использовали CMake для создания каталога сборки, обычно проще всего просто удалить его и создать заново. Если у вас подобный каталог (например, `build`), выполните следующие команды:
+
+```bash
+# Перейдите в корневую директорию вашего проекта
+cd /path/to/osm2pgsql
+
+# Удалите каталог сборки
+rm -rf build
+```
+
+Замените `/path/to/osm2pgsql` на фактический путь до вашего проекта.
+
+### 2. Создайте новый каталог для сборки
+
+Создайте новый каталог для сборки:
+
+```bash
+mkdir build
+cd build
+```
+
+### 3. Выполните CMake
+
+Теперь вы можете запустить CMake для настройки сборки. Если у вас есть какие-то специфические настройки или флаги, добавьте их к команде:
+
+```bash
+cmake ..
+```
+
+### 4. Постройте проект
+
+После успешного выполнения команды CMake выполните сборку:
+
+```bash
+make
+```
+
+### 5. Установите проект (опционально)
+
+Если сборка завершилась успешно и вы хотите установить `osm2pgsql`, выполните команду:
+
+```bash
+sudo make install
+```
+
+### Проверка
+
+Теперь вы можете проверить, что `osm2pgsql` работает корректно, запустив его:
+
+```bash
+osm2pgsql --version
+```
+
 # Установите Python зависимости
-pip install pyosmium
+<!-- pip install pyosmium -->
+
+# Проверка версии POSTGIS
+psql "test"
+psql (12.22 (Postgres.app))
+Type "help" for help.
+
+test=# SELECT PostGIS_Version();
+            postgis_version            
+---------------------------------------
+ 3.0 USE_GEOS=1 USE_PROJ=1 USE_STATS=1
+(1 row)
+
+test=# \q
 
 # Активируйте PostGIS в вашей БД
 psql -d your_db_name -c "CREATE EXTENSION postgis;"
