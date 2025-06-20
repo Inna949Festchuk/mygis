@@ -270,33 +270,33 @@
         СТИЛИ ВСПЛЫВАЮЩЕГО ОКНА (POPUP) 
         */
         .ol-popup {
-            background: white; /* Убрали прозрачность */
-            padding: 12px 10px;
+            background: white;
+            padding: 8px 10px;
             border: 1px solid #ddd;
             border-radius: 6px;
             box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-            min-width: auto !important;
-            max-width: none !important;
+            min-width: unset !important;
+            max-width: unset !important;
             width: auto !important;
-            box-sizing: content-box;
+            min-width: 120px;
+            box-sizing: border-box;
             text-align: center;
+            color:#444;
+            font-size: 14px;
             font-weight: 400;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: #444;
         }
-        
-        /* Скрываем крестик закрытия */
+
         .ol-popup-closer {
             display: none !important;
         }
-        
-        /* Центрируем содержимое */
+
         .ol-popup-content {
             display: flex;
-            flex-direction: column; /* Располагаем элементы друг под другом */
-            align-items: center; /* Центрируем по горизонтали */
-            justify-content: center; /* Центрируем по вертикали */
-            gap: 5px; /* Отступ между строками */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
             padding: 0 !important;
             margin: 0 !important;
             text-align: center;
