@@ -7,8 +7,7 @@ click==8.2.1
 Django==4.2
 dotenv==0.9.9
 idna==3.10
-psycopg2==2.9.10
-pyproj==3.7.1
+psycopg2-binary==2.9.9
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 requests==2.32.4
@@ -16,3 +15,9 @@ six==1.17.0
 sqlparse==0.5.3
 types-python-dateutil==2.9.0.20250516
 urllib3==2.4.0
+gunicorn==21.2.0
+geopandas==0.14.1
+shapely==2.0.3
+pyproj==3.6.1
+django-leaflet==0.28.3
+django-geojson==3.2.0

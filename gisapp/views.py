@@ -184,11 +184,12 @@ import json
 import tempfile
 import subprocess
 import requests
+import shutil
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from django.contrib.gis.geos import Polygon
 from django.db import connection
+from django.contrib.gis.geos import Polygon
 
 @csrf_exempt
 def load_osm(request):
@@ -283,19 +284,14 @@ def load_osm(request):
                 '--proj', '3857',
                 '--database', db_config['NAME'],
                 '--username', db_config['USER'],
+                '--host', db_config['HOST'],
+                '--port', db_config['PORT'],
                 osm_file_path
             ]
             
-            # Добавляем опциональные параметры
-            if db_config.get('HOST'):
-                cmd.extend(['--host', db_config['HOST']])
-            if db_config.get('PORT'):
-                cmd.extend(['--port', db_config['PORT']])
-            
             # Устанавливаем переменные окружения
             env = os.environ.copy()
-            if db_config.get('PASSWORD'):
-                env['PGPASSWORD'] = db_config['PASSWORD']
+            env['PGPASSWORD'] = db_config['PASSWORD']
             
             # Выполняем команду osm2pgsql
             try:
