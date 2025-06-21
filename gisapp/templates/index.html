@@ -11,9 +11,7 @@
     <link rel="stylesheet" href="{% static 'css/ol-popup.css' %}">
     
     <style>
-        /* 
-        ОСНОВНЫЕ СТИЛИ СТРАНИЦЫ 
-        */
+        /* Улучшенные стили с учетом мобильной адаптации */
         html, body {
             height: 100%;
             width: 100%;
@@ -22,103 +20,83 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow: hidden;
             background-color: #f0f2f5;
+            touch-action: manipulation;
         }
 
-        /* 
-        СТИЛИ КАРТЫ 
-        */
         #map {
             height: 100%;
             width: 100%;
             background: #e9ecef;
         }
 
-        /* 
-        СТИЛИ КОНТРОЛЬНЫХ БЛОКОВ 
-        */
         .control-box {
             position: absolute;
             background: rgba(255, 255, 255, 0.92);
-            padding: 6px 8px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 8px 12px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             z-index: 1000;
             color: #333;
             font-size: 14px;
             display: flex;
             align-items: center;
-            gap: 10px; /* Увеличили отступ между кнопками */
+            gap: 10px;
             backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
         }
 
-        /* 
-        БЛОК УПРАВЛЕНИЯ СЛОЯМИ (СПРАВА ВВЕРХУ)
-        */
         #layer-control {
             top: 15px;
             right: 15px;
-            padding: 5px 7px;
+            padding: 6px 8px;
         }
 
-        /* 
-        СТИЛИ КНОПОК УПРАВЛЕНИЯ 
-        */
         .control-btn {
             background: rgba(245, 245, 245, 0.95);
             border: 1px solid #e0e0e0;
-            padding: 5px;
+            padding: 7px;
             cursor: pointer;
-            border-radius: 5px;
+            border-radius: 8px;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 26px; /* Уменьшили размер кнопок */
-            height: 26px; /* Уменьшили размер кнопок */
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            width: 36px;
+            height: 36px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
         }
 
-        .control-btn:hover {
+        .control-btn:hover, .control-btn:active {
             background: #fff;
             transform: translateY(-2px);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
 
-        .control-btn svg {
-            width: 16px; /* размер иконок */
-            height: 16px; /* размер иконок */
-        }
-
-        .trash-button:hover {
+        .trash-button:hover, .trash-button:active {
             color: #e74c3c;
             border-color: #f5b7b1;
         }
 
-        .export-button:hover {
+        .export-button:hover, .export-button:active {
             color: #3498db;
             border-color: #aed6f1;
         }
 
-        .osm-button:hover {
+        .osm-button:hover, .osm-button:active {
             color: #27ae60;
             border-color: #a9dfbf;
         }
 
-        /* 
-        БЛОК УПРАВЛЕНИЯ ПАРАМЕТРАМИ (СЛЕВА ВНИЗУ)
-        */
         #controls {
             bottom: 15px;
             left: 15px;
-            min-width: 350px;
+            min-width: 300px;
+            max-width: 90%;
             flex-direction: column;
-            gap: 8px;
-            padding: 10px 12px;
+            gap: 10px;
+            padding: 12px 15px;
         }
 
-        /* 
-        ГРУППЫ ЭЛЕМЕНТОВ УПРАВЛЕНИЯ 
-        */
         .control-group {
             display: flex;
             align-items: center;
@@ -127,17 +105,17 @@
 
         label {
             display: inline-block;
-            width: 70px;
-            margin-right: 8px;
+            width: 80px;
+            margin-right: 10px;
             color: #444;
-            font-weight: 400;
-            font-size: 14px; /* Унифицированный размер шрифта */
+            font-weight: 500;
+            font-size: 14px;
         }
 
         input[type="range"] {
             flex-grow: 1;
-            height: 5px;
-            border-radius: 3px;
+            height: 6px;
+            border-radius: 4px;
             background: #e0e0e0;
             outline: none;
             -webkit-appearance: none;
@@ -145,40 +123,39 @@
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: #3498db;
             cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.2s ease;
         }
 
-        /* 
-        БЛОК КООРДИНАТ 
-        */
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+            background: #2980b9;
+        }
+
         #coordinates {
-            margin-top: 6px;
-            padding-top: 8px;
+            margin-top: 8px;
+            padding-top: 10px;
             border-top: 1px solid #eee;
-            white-space: nowrap;
-            font-size: 14px; /* Унифицированный размер шрифта */
+            font-size: 14px;
             color: #444;
             display: flex;
             align-items: center;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Единый шрифт */
+            font-weight: 500;
         }
 
         #mouse-coords {
-            color: #444;
-            font-weight: 400;
+            color: #2c3e50;
+            font-weight: 600;
             margin-left: 5px;
-            font-size: 14px; /* Унифицированный размер шрифта */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Моноширинный для координат */
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
         }
         
-        /* 
-        СТИЛИ МОДАЛЬНОГО ОКНА 
-        */
         .modal {
             display: none;
             position: fixed;
@@ -186,46 +163,49 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 2000;
             justify-content: center;
             align-items: center;
+            backdrop-filter: blur(2px);
         }
         
         .modal-content {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.4);
             width: 400px;
             max-width: 90%;
             overflow: hidden;
-            transform: translateY(-50px); /* Сдвигаем окно выше */
-            animation: modalAppear 0.3s ease forwards;
+            transform: translateY(-30px);
+            animation: modalAppear 0.4s ease forwards;
         }
         
         @keyframes modalAppear {
-            to { transform: translateY(-30px); opacity: 1; } /* Финишная позиция выше */
+            to { transform: translateY(0); opacity: 1; }
         }
         
         .modal-header {
             background: #f8f9fa;
             padding: 18px 20px;
             border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
         
         .modal-header h3 {
             margin: 0;
-            font-size: 16px;
-            color: #444;
+            font-size: 18px;
+            color: #2c3e50;
             font-weight: 600;
         }
         
         .modal-body {
             padding: 25px 20px;
-            font-size: 14px;
+            font-size: 16px;
             line-height: 1.6;
-            color: #444;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #495057;
         }
         
         .modal-footer {
@@ -238,14 +218,13 @@
         }
         
         .modal-btn {
-            padding: 9px 18px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             transition: all 0.2s;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         .cancel-btn {
@@ -266,29 +245,19 @@
             background: #c0392b;
         }
         
-        /* 
-        СТИЛИ ВСПЛЫВАЮЩЕГО ОКНА (POPUP) 
-        */
         .ol-popup {
-            background: white;
-            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.96);
+            padding: 10px 16px;
             border: 1px solid #ddd;
-            border-radius: 6px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-            min-width: unset !important;
-            max-width: unset !important;
-            width: auto !important;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
             min-width: 120px;
             box-sizing: border-box;
             text-align: center;
-            color:#444;
-            font-size: 14px;
-            font-weight: 400;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .ol-popup-closer {
-            display: none !important;
+            color: #2c3e50;
+            font-size: 15px;
+            font-weight: 500;
+            backdrop-filter: blur(2px);
         }
 
         .ol-popup-content {
@@ -296,11 +265,9 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 5px;
-            padding: 0 !important;
-            margin: 0 !important;
-            text-align: center;
-            width: 100%;
+            gap: 6px;
+            padding: 0;
+            margin: 0;
         }
         
         .loading-indicator {
@@ -309,24 +276,23 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.88);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
-            padding: 16px 28px;
-            border-radius: 8px;
+            padding: 18px 30px;
+            border-radius: 10px;
             z-index: 3000;
-            font-size: 16px;
+            font-size: 17px;
             align-items: center;
-            gap: 14px;
+            gap: 15px;
             font-weight: 500;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
         }
         
         .loading-indicator::after {
             content: "";
             display: inline-block;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             border: 3px solid rgba(255,255,255,0.3);
             border-top-color: #fff;
             border-radius: 50%;
@@ -336,17 +302,62 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Мобильная адаптация */
+        @media (max-width: 768px) {
+            .control-box {
+                padding: 6px 8px;
+                font-size: 13px;
+            }
+            
+            #controls {
+                min-width: 260px;
+                padding: 10px;
+            }
+            
+            .control-btn {
+                width: 32px;
+                height: 32px;
+                padding: 5px;
+            }
+            
+            label {
+                width: 70px;
+                font-size: 13px;
+            }
+            
+            #coordinates {
+                font-size: 13px;
+            }
+            
+            #mouse-coords {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #layer-control {
+                top: 10px;
+                right: 10px;
+            }
+            
+            #controls {
+                left: 10px;
+                bottom: 10px;
+                min-width: 240px;
+            }
+            
+            label {
+                width: 65px;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <!-- Основной контейнер карты -->
     <div id="map" class="map"></div>
-    
-    <!-- Контейнер для всплывающих подсказок -->
     <div id="popup"></div>
     
-    <!-- Модальное окно подтверждения очистки БД -->
     <div id="confirm-dialog" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -362,91 +373,77 @@
         </div>
     </div>
     
-    <!-- Блок управления слоями (справа вверху) -->
     <div id="layer-control" class="control-box">
-        <!-- Кнопка загрузки OSM (глобус) -->
-        <div class="control-btn osm-button" id="draw-osm-rect" title="Загрузка карты OSM">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="draw-osm-rect" class="control-btn osm-button" title="Загрузка карты OSM">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="2" y1="12" x2="22" y2="12"></line>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
             </svg>
-        </div>
+        </button>
         
-        <!-- Кнопка скрытия/показа точек -->
-        <div class="control-btn" id="toggle-layers" title="Скрыть/показать точки">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="toggle-layers" class="control-btn" title="Скрыть/показать точки">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
             </svg>
-        </div>
+        </button>
         
-        <!-- Кнопка экспорта -->
-        <div class="control-btn export-button" id="export-map" title="Экспорт карты в PNG">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="export-map" class="control-btn export-button" title="Экспорт карты в PNG">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-        </div>
+        </button>
         
-        <!-- Кнопка очистки -->
-        <div class="control-btn trash-button" id="clear-db" title="Очистить базу данных">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button id="clear-db" class="control-btn trash-button" title="Очистить базу данных">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
-        </div>
+        </button>
     </div>
 
-    <!-- Блок управления параметрами (слева внизу) -->
     <div id="controls" class="control-box">
-        <!-- Слайдер размытия -->
         <div class="control-group">
             <label for="blur">Размытие:</label>
             <input type="range" id="blur" min="0" max="100" value="45">
             <span id="blur-value">45</span>
         </div>
         
-        <!-- Слайдер радиуса -->
         <div class="control-group">
             <label for="radius">Радиус:</label>
             <input type="range" id="radius" min="1" max="50" value="8">
             <span id="radius-value">8</span>
         </div>
         
-        <!-- Блок отображения координат -->
         <div id="coordinates">
             Координаты: <span id="mouse-coords">Наведите на карту</span>
         </div>
     </div>
 
     <script>
-        //////////////////////////////////////////////////////////////////
-        // ОСНОВНЫЕ ПЕРЕМЕННЫЕ И КОНСТАНТЫ
-        //////////////////////////////////////////////////////////////////
-        let map; // Объект карты
-        let vectorSource; // Источник данных для тепловой карты
-        let heatmapLayer; // Слой тепловой карты
-        let pointLayer; // Слой точек
-        let eventSource; // Источник событий для обновления данных
-        let lastDataSignature = null; // Хеш последних данных для сравнения
-        let layersVisible = true; // Видимость слоя точек
-        let resolution; // Разрешение карты
-        let lastRenderTime = 0; // Время последнего рендеринга
-        let popup; // Всплывающее окно
-        let dataCheckInterval; // Интервал проверки данных
-        let osmVectorSource; // Источник данных для OSM
-        let osmVectorLayer; // Слой для OSM
-        let drawInteraction = null; // Взаимодействие для рисования
-        const csrfToken = "{{ csrf_token }}"; // CSRF токен для запросов
+        // Основные переменные
+        let map;
+        let vectorSource;
+        let heatmapLayer;
+        let pointLayer;
+        let eventSource;
+        let lastDataSignature = null;
+        let layersVisible = true;
+        let resolution;
+        let lastRenderTime = 0;
+        let popup;
+        let dataCheckInterval;
+        let osmVectorSource;
+        let osmVectorLayer;
+        let drawInteraction = null;
+        const csrfToken = "{{ csrf_token }}";
 
-        //////////////////////////////////////////////////////////////////
-        // ИНИЦИАЛИЗАЦИЯ КАРТЫ
-        //////////////////////////////////////////////////////////////////
+        // Инициализация карты
         function initMap() {
-            // Создаем карту с базовым слоем OSM
             map = new ol.Map({
-                target: 'map', // Контейнер для карты
+                target: 'map',
                 layers: [
                     new ol.layer.Tile({
                         source: new ol.source.OSM({
@@ -456,133 +453,119 @@
                     })
                 ],
                 view: new ol.View({
-                    center: ol.proj.fromLonLat([20.6531253, 54.6590630]), // Центр карты
-                    zoom: 24 // Начальный уровень масштабирования
+                    center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
+                    zoom: 24
                 }),
-                renderer: 'canvas' // Рендерер
+                renderer: 'canvas'
             });
 
-            // Инициализация всплывающего окна
+            // Инициализация popup
             popup = new ol.Overlay.Popup({
                 element: document.getElementById('popup'),
-                positioning: 'bottom-center', // Позиционирование снизу от точки
-                stopEvent: false, // Не блокировать события карты
-                autoPan: false, // Автоматическое смещение карты
-                closeBox: false // Скрыть кнопку закрытия
+                positioning: 'bottom-center',
+                stopEvent: false,
+                autoPan: false,
+                closeBox: false
             });
-            map.addOverlay(popup); // Добавляем popup на карту
+            map.addOverlay(popup);
 
-            // Создаем источник данных для тепловой карты
+            // Источник для тепловой карты
             vectorSource = new ol.source.Vector({ wrapX: false });
             
-            // Создаем слой тепловой карты
+            // Тепловая карта
             heatmapLayer = new ol.layer.Heatmap({
                 source: vectorSource,
-                blur: 45, // Начальное размытие
-                radius: 8, // Начальный радиус
-                weight: 'weight', // Поле для веса точек
-                renderMode: 'image' // Режим рендеринга
+                blur: 45,
+                radius: 8,
+                weight: 'weight',
+                renderMode: 'image'
             });
 
-            // Создаем слой точек
+            // Векторный слой с точками
             pointLayer = new ol.layer.Vector({
                 source: vectorSource,
                 style: new ol.style.Style({
                     image: new ol.style.Circle({
-                        radius: 2, // Размер точек
-                        fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }), // Цвет заливки
+                        radius: 2,
+                        fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }),
                         stroke: new ol.style.Stroke({
-                            color: 'rgba(100, 100, 100, 0.9)', // Цвет обводки
-                            width: 1 // Толщина обводки
+                            color: 'rgba(100, 100, 100, 0.9)',
+                            width: 1
                         })
                     })
                 }),
-                renderMode: 'image' // Режим рендеринга
+                renderMode: 'image'
             });
 
-            // Создаем источник и слой для прямоугольника OSM
+            // Слой для ограничивающего прямоугольника OSM
             osmVectorSource = new ol.source.Vector({ wrapX: false });
             osmVectorLayer = new ol.layer.Vector({
                 source: osmVectorSource,
                 style: new ol.style.Style({
                     stroke: new ol.style.Stroke({
-                        color: 'rgba(255, 0, 0, 0.8)', // Цвет границы
-                        width: 2 // Толщина границы
+                        color: 'rgba(255, 0, 0, 0.8)',
+                        width: 2
                     }),
                     fill: new ol.style.Fill({
-                        color: 'rgba(255, 0, 0, 0.1)' // Цвет заливки
+                        color: 'rgba(255, 0, 0, 0.1)'
                     })
                 })
             });
 
-            // Добавляем все слои на карту
+            // Добавляем слои на карту
             map.addLayer(heatmapLayer);
             map.addLayer(pointLayer);
             map.addLayer(osmVectorLayer);
             
-            // Сохраняем начальное разрешение карты
+            // Кешируем разрешение карты 
             resolution = map.getView().getResolution();
             
-            // Обновляем разрешение при изменении масштаба
+            // Обновление разрешения при изменении зума
             map.getView().on('change:resolution', () => {
                 resolution = map.getView().getResolution();
             });
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ЗАГРУЗКА НАЧАЛЬНЫХ ДАННЫХ
-        //////////////////////////////////////////////////////////////////
+        // Загрузка начальных данных
         function loadInitialData() {
             try {
-                // Получаем начальные данные из контекста Django
                 const points = {{ context|safe }};
-                // Преобразуем GeoJSON в объекты OpenLayers
                 const features = new ol.format.GeoJSON().readFeatures(points, {
-                    featureProjection: 'EPSG:3857' // Проекция карты
+                    featureProjection: 'EPSG:3857'
                 });
-                // Добавляем объекты на карту
                 vectorSource.addFeatures(features);
                 
-                // Сохраняем подпись данных для сравнения
+                // Инициализируем подпись данных
                 lastDataSignature = calculateDataSignature(features);
             } catch (e) {
                 console.error('Ошибка загрузки начальных данных:', e);
             }
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ВЫЧИСЛЕНИЕ ПОДПИСИ ДАННЫХ ДЛЯ СРАВНЕНИЯ
-        //////////////////////////////////////////////////////////////////
+        // Функция для вычисления подписи данных
         function calculateDataSignature(features) {
-            if (features.length === 0) return 'empty'; // Для пустого набора
+            if (features.length === 0) return 'empty';
             
-            // Создаем массив строк координат и значений
             const coordsArray = features.map(feature => {
                 const coords = feature.getGeometry().getCoordinates();
                 return `${coords[0]},${coords[1]},${feature.get('f3') || 0}`;
             });
             
-            // Сортируем и объединяем для создания уникальной подписи
             return coordsArray.sort().join('|');
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ПРОВЕРКА ИЗМЕНЕНИЙ ДАННЫХ НА СЕРВЕРЕ
-        //////////////////////////////////////////////////////////////////
+        // Проверка изменений данных
         async function checkDataChanges() {
             try {
-                // Запрашиваем актуальные данные с сервера
                 const response = await fetch('/geojson-data/');
                 if (!response.ok) throw new Error('Ошибка сети');
                 
-                // Преобразуем ответ в JSON
                 const data = await response.json();
-                // Преобразуем GeoJSON в объекты OpenLayers
                 const features = new ol.format.GeoJSON().readFeatures(data, {
                     featureProjection: 'EPSG:3857'
                 });
                 
-                // Вычисляем текущую подпись данных
+                // Вычисляем текущую подпись
                 const currentSignature = calculateDataSignature(features);
                 
                 // Сравниваем с последней известной подписью
@@ -601,60 +584,80 @@
             }
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ЭКСПОРТ КАРТЫ В ФОРМАТ PNG
-        //////////////////////////////////////////////////////////////////
+        // Экспорт карты в PNG (исправленная версия)
         function exportMapToBMP() {
-            // Создаем индикатор загрузки
             const loadingIndicator = document.createElement('div');
             loadingIndicator.className = 'loading-indicator';
             loadingIndicator.innerHTML = 'Создание изображения... <span></span>';
             document.body.appendChild(loadingIndicator);
             
             try {
-                // Обработчик завершения рендеринга
                 map.once('rendercomplete', function() {
-                    // Получаем размеры карты
+                    const mapCanvas = document.createElement('canvas');
                     const size = map.getSize();
-                    const width = size[0];
-                    const height = size[1];
-                    
-                    // Создаем временный canvas
-                    const tempCanvas = document.createElement('canvas');
-                    tempCanvas.width = width;
-                    tempCanvas.height = height;
-                    const ctx = tempCanvas.getContext('2d');
+                    mapCanvas.width = size[0];
+                    mapCanvas.height = size[1];
+                    const mapContext = mapCanvas.getContext('2d');
                     
                     // Заливаем белым фоном
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, width, height);
+                    mapContext.fillStyle = 'white';
+                    mapContext.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
                     
-                    // Получаем все canvas карты
-                    const mapCanvases = document.querySelectorAll('.ol-viewport canvas');
+                    // Получаем все canvas слоев
+                    const canvases = Array.from(
+                        map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer')
+                    );
                     
-                    // Рисуем все слои карты на временном canvas
-                    mapCanvases.forEach(canvas => {
-                        if (canvas.width === 0 || canvas.height === 0) return;
-                        
-                        // Применяем трансформации
-                        const transform = canvas.style.transform;
-                        if (transform) {
-                            const matrix = transform.match(/matrix\(([^)]+)\)/)[1].split(',').map(Number);
-                            ctx.setTransform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
+                    // Рисуем каждый canvas с учетом трансформаций
+                    canvases.forEach(canvas => {
+                        if (canvas.width > 0) {
+                            const opacity = canvas.parentNode.style.opacity || canvas.style.opacity;
+                            mapContext.globalAlpha = opacity === '' ? 1 : Number(opacity);
+                            
+                            let matrix;
+                            const transform = canvas.style.transform;
+                            
+                            if (transform) {
+                                // Получаем матрицу трансформации
+                                matrix = transform
+                                    .match(/^matrix\(([^\(]*)\)$/)[1]
+                                    .split(',')
+                                    .map(Number);
+                            } else {
+                                matrix = [
+                                    parseFloat(canvas.style.width) / canvas.width,
+                                    0,
+                                    0,
+                                    parseFloat(canvas.style.height) / canvas.height,
+                                    0,
+                                    0
+                                ];
+                            }
+                            
+                            // Применяем трансформацию к контексту
+                            mapContext.setTransform(...matrix);
+                            
+                            // Обрабатываем фон, если он есть
+                            const backgroundColor = canvas.parentNode.style.backgroundColor;
+                            if (backgroundColor) {
+                                mapContext.fillStyle = backgroundColor;
+                                mapContext.fillRect(0, 0, canvas.width, canvas.height);
+                            }
+                            
+                            // Рисуем canvas
+                            mapContext.drawImage(canvas, 0, 0);
                         }
-                        
-                        // Рисуем слой
-                        ctx.drawImage(canvas, 0, 0);
-                        ctx.setTransform(1, 0, 0, 1, 0, 0);
                     });
                     
+                    // Сбрасываем трансформации
+                    mapContext.globalAlpha = 1;
+                    mapContext.setTransform(1, 0, 0, 1, 0, 0);
+                    
                     // Создаем ссылку для скачивания
-                    const dataURL = tempCanvas.toDataURL('image/png');
                     const link = document.createElement('a');
-                    link.href = dataURL;
+                    link.href = mapCanvas.toDataURL('image/png');
                     link.download = `map_export_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.png`;
                     
-                    // Имитируем клик для скачивания
                     document.body.appendChild(link);
                     link.click();
                     
@@ -665,7 +668,7 @@
                     }, 100);
                 });
                 
-                // Запускаем рендеринг карты
+                // Принудительно запускаем рендеринг
                 map.renderSync();
             } catch (error) {
                 console.error('Ошибка экспорта:', error);
@@ -674,17 +677,13 @@
             }
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ЗАГРУЗКА ДАННЫХ OSM
-        //////////////////////////////////////////////////////////////////
+        // Загрузка данных OSM
         function loadOSMData(bbox) {
-            // Проверка координат перед отправкой
             if (!bbox || bbox.length !== 4) {
                 alert('Ошибка: неверный формат координат');
                 return;
             }
             
-            // Проверяем каждую координату
             for (let coord of bbox) {
                 if (isNaN(coord) || coord === null || coord === undefined) {
                     alert('Ошибка: координаты содержат нечисловые значения');
@@ -692,20 +691,18 @@
                 }
             }
             
-            // Создаем индикатор загрузки
             const loadingIndicator = document.createElement('div');
             loadingIndicator.className = 'loading-indicator';
             loadingIndicator.innerHTML = 'Загрузка данных OSM... <span></span>';
             document.body.appendChild(loadingIndicator);
             
-            // Отправляем запрос на сервер
             fetch('/load_osm/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken // CSRF защита
+                    'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({ bbox: bbox }) // Границы области
+                body: JSON.stringify({ bbox: bbox })
             })
             .then(response => {
                 if (!response.ok) {
@@ -725,16 +722,12 @@
                 alert('Ошибка сети: ' + error.message);
             })
             .finally(() => {
-                // Удаляем индикатор загрузки
                 document.body.removeChild(loadingIndicator);
             });
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ИНИЦИАЛИЗАЦИЯ ЭЛЕМЕНТОВ УПРАВЛЕНИЯ
-        //////////////////////////////////////////////////////////////////
+        // Инициализация элементов управления
         function initControls() {
-            // Получаем элементы управления
             const blurInput = document.getElementById('blur');
             const radiusInput = document.getElementById('radius');
             const blurValue = document.getElementById('blur-value');
@@ -748,101 +741,82 @@
             const confirmCancel = document.getElementById('confirm-cancel');
             const confirmOk = document.getElementById('confirm-ok');
 
-            // Обработчик перемещения мыши по карте
+            // Обработчик перемещения мыши
             map.on('pointermove', (evt) => {
-                if (evt.dragging) return; // Игнорируем при перетаскивании
-                if (Date.now() - lastRenderTime < 100) return; // Ограничение частоты обновления
+                if (evt.dragging) return;
+                if (Date.now() - lastRenderTime < 100) return;
                 lastRenderTime = Date.now();
                 
-                // Преобразуем координаты в WGS84
                 const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-                coordsElement.textContent = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
+                coordsElement.textContent = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
                 
-                // Проверяем, находится ли курсор над точкой
                 const feature = map.forEachFeatureAtPixel(evt.pixel, feature => feature, {
-                    hitTolerance: 5, // Допустимое расстояние
-                    layerFilter: layer => layer === pointLayer // Только слой точек
+                    hitTolerance: 5,
+                    layerFilter: layer => layer === pointLayer
                 });
 
                 if (feature) {
-                    // Получаем значение точки
                     const value = feature.get('f3');
-                    
-                    // Формируем содержимое всплывающего окна
-                    const content = `
-                        <div style="font-weight: margin-bottom: 0px;">Значение точки</div>
-                        <div style="font-size: 14px;">${value}</div>
-                    `;
-                    
-                    // Показываем всплывающее окно
-                    popup.show(evt.coordinate, content);
+                    popup.show(evt.coordinate, `Значение: ${value}`);
                     map.getTargetElement().style.cursor = 'pointer';
                 } else {
-                    // Скрываем всплывающее окно
                     popup.hide();
                     map.getTargetElement().style.cursor = '';
                 }
             });
 
-            // Управление видимостью точек
+            // Управление слоями
             toggleButton.addEventListener('click', () => {
                 layersVisible = !layersVisible;
                 pointLayer.setVisible(layersVisible);
                 
-                // Обновление иконки глаза
-                const eyeIcon = toggleButton.querySelector('svg');
-                if (layersVisible) {
-                    eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
-                } else {
-                    eyeIcon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
-                }
+                // Анимация кнопки
+                toggleButton.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    toggleButton.style.transform = '';
+                }, 300);
             });
 
-            // Управление размытием тепловой карты
+            // Управление параметрами тепловой карты
             blurInput.addEventListener('input', () => {
                 heatmapLayer.setBlur(parseInt(blurInput.value));
                 blurValue.textContent = blurInput.value;
             });
 
-            // Управление радиусом тепловой карты
             radiusInput.addEventListener('input', () => {
                 heatmapLayer.setRadius(parseInt(radiusInput.value));
                 radiusValue.textContent = radiusInput.value;
             });
 
-            // Обработчик экспорта карты
+            // Экспорт карты в PNG
             exportButton.addEventListener('click', exportMapToBMP);
 
-            // Обработчик очистки базы данных
+            // Функция для очистки базы данных
             clearDbButton.addEventListener('click', function() {
-                confirmDialog.style.display = 'flex'; // Показываем модальное окно
+                confirmDialog.style.display = 'flex';
             });
             
-            // Обработчик отмены очистки
+            // Обработчики для модального окна
             confirmCancel.addEventListener('click', function() {
-                confirmDialog.style.display = 'none'; // Скрываем модальное окно
+                confirmDialog.style.display = 'none';
             });
             
-            // Обработчик подтверждения очистки
             confirmOk.addEventListener('click', function() {
-                confirmDialog.style.display = 'none'; // Скрываем модальное окно
+                confirmDialog.style.display = 'none';
                 
-                // Получаем CSRF токен
                 fetch('/get-csrf-token/')
                 .then(response => response.json())
                 .then(data => {
-                    // Отправляем запрос на очистку БД
                     fetch('/clear-db/', {
                         method: 'POST',
                         headers: {
-                            'X-CSRFToken': data.csrfToken, // Используем токен
+                            'X-CSRFToken': data.csrfToken,
                             'Content-Type': 'application/json'
                         }
                     })
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            // Очищаем данные на карте
                             vectorSource.clear();
                             lastDataSignature = null;
                             console.log('База данных очищена');
@@ -851,58 +825,42 @@
                 });
             });
             
-            // Закрытие модального окна по клику вне его
             window.addEventListener('click', function(event) {
                 if (event.target === confirmDialog) {
                     confirmDialog.style.display = 'none';
                 }
             });
 
-            // Обработчик загрузки данных OSM
+            // Обработчик для кнопки загрузки OSM
             drawOsmButton.addEventListener('click', function() {
-                osmVectorSource.clear(); // Очищаем предыдущие области
+                osmVectorSource.clear();
                 
-                // Удаляем предыдущее взаимодействие
                 if (drawInteraction) {
                     map.removeInteraction(drawInteraction);
                 }
                 
-                // Создаем взаимодействие для рисования прямоугольника
                 drawInteraction = new ol.interaction.Draw({
                     source: osmVectorSource,
                     type: 'Circle',
-                    geometryFunction: ol.interaction.Draw.createBox() // Функция создания прямоугольника
+                    geometryFunction: ol.interaction.Draw.createBox()
                 });
                 
-                // Добавляем взаимодействие на карту
                 map.addInteraction(drawInteraction);
                 
-                // Обработчик завершения рисования
+                // Анимация кнопки
+                drawOsmButton.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    drawOsmButton.style.transform = '';
+                }, 300);
+                
+                // При завершении рисования
                 drawInteraction.on('drawend', function(event) {
                     const geometry = event.feature.getGeometry();
-                    if (!geometry) {
-                        alert('Ошибка: не удалось получить геометрию');
-                        return;
-                    }
-                    
-                    // Получаем границы области
                     const extent = geometry.getExtent();
-                    if (!extent || extent.length !== 4) {
-                        alert('Ошибка: неверный формат экстента');
-                        return;
-                    }
                     
                     // Преобразуем координаты в WGS84
                     const minCoord = ol.proj.toLonLat([extent[0], extent[1]]);
                     const maxCoord = ol.proj.toLonLat([extent[2], extent[3]]);
-                    
-                    // Проверяем координаты
-                    if (!minCoord || !maxCoord || 
-                        isNaN(minCoord[0]) || isNaN(minCoord[1]) || 
-                        isNaN(maxCoord[0]) || isNaN(maxCoord[1])) {
-                        alert('Ошибка: неверные координаты области');
-                        return;
-                    }
                     
                     // Форматируем bbox
                     const bbox = [
@@ -921,36 +879,29 @@
                 });
             });
 
-            // Инициализация значений слайдеров
+            // Инициализация значений
             blurValue.textContent = blurInput.value;
             radiusValue.textContent = radiusInput.value;
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ЗАПУСК МОНИТОРИНГА ИЗМЕНЕНИЙ ДАННЫХ
-        //////////////////////////////////////////////////////////////////
+        // Запуск проверки изменений
         function startDataMonitoring() {
-            // Используем Server-Sent Events для получения обновлений
             eventSource = new EventSource('/data-updates/');
             
-            // Обработчик новых сообщений
             eventSource.onmessage = async (event) => {
                 try {
-                    await checkDataChanges(); // Проверяем изменения
+                    await checkDataChanges();
                 } catch (e) {
                     console.error('Ошибка обновления данных:', e);
                 }
             };
             
-            // Обработчик ошибок
             eventSource.onerror = (error) => {
                 console.error('Ошибка SSE:', error);
                 if (eventSource) eventSource.close();
-                // Переподключаемся через 5 секунд
                 setTimeout(startDataMonitoring, 5000);
             };
 
-            // Дублирующая проверка каждые 30 секунд
             dataCheckInterval = setInterval(async () => {
                 try {
                     await checkDataChanges();
@@ -960,27 +911,21 @@
             }, 30000);
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ОЧИСТКА РЕСУРСОВ ПРИ ЗАКРЫТИИ СТРАНИЦЫ
-        //////////////////////////////////////////////////////////////////
+        // Остановка обновления при закрытии страницы
         function setupCleanup() {
             window.addEventListener('beforeunload', () => {
-                // Закрываем SSE соединение
                 if (eventSource) eventSource.close();
-                // Очищаем интервал проверки
                 if (dataCheckInterval) clearInterval(dataCheckInterval);
             });
         }
 
-        //////////////////////////////////////////////////////////////////
-        // ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ
-        //////////////////////////////////////////////////////////////////
+        // Основная функция инициализации
         function init() {
-            initMap(); // Инициализация карты
-            loadInitialData(); // Загрузка начальных данных
-            initControls(); // Инициализация элементов управления
-            startDataMonitoring(); // Запуск мониторинга данных
-            setupCleanup(); // Настройка очистки ресурсов
+            initMap();
+            loadInitialData();
+            initControls();
+            startDataMonitoring();
+            setupCleanup();
         }
 
         // Запуск приложения после загрузки страницы
