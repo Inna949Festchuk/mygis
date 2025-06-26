@@ -84,7 +84,8 @@ services:
   web:
     build: .
     container_name: django
-    entrypoint: "sh -c 'python manage.py migrate && gunicorn --bind 0.0.0.0:8000 --reload gisproject.wsgi:application'"
+    # entrypoint: "sh -c 'python manage.py migrate && gunicorn --bind 0.0.0.0:8000 --reload gisproject.wsgi:application'"
+    entrypoint: "sh -c 'python manage.py migrate && python manage.py runserver 0.0.0.0:8000'"
     volumes:
       - .:/app
     environment:

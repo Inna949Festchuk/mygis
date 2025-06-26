@@ -26,27 +26,27 @@ class ValuesPoints(models.Model):
 # Модели для данных OSM
 
 class OSMPoint(models.Model):
-    osm_id = models.BigIntegerField()
+    osm_id = models.BigIntegerField(primary_key=True)
     tags = models.JSONField(default=dict)
-    geom = models.PointField(srid=3857)
+    way = models.PointField(srid=3857)
     
     class Meta:
         managed = False  # Таблица будет управляться osm2pgsql
         db_table = 'planet_osm_point'
 
 class OSMLine(models.Model):
-    osm_id = models.BigIntegerField()
+    osm_id = models.BigIntegerField(primary_key=True)
     tags = models.JSONField(default=dict)
-    geom = models.LineStringField(srid=3857)
+    way = models.LineStringField(srid=3857)
     
     class Meta:
         managed = False
         db_table = 'planet_osm_line'
 
 class OSMPolygon(models.Model):
-    osm_id = models.BigIntegerField()
+    osm_id = models.BigIntegerField(primary_key=True)
     tags = models.JSONField(default=dict)
-    geom = models.PolygonField(srid=3857)
+    way = models.PolygonField(srid=3857)
     
     class Meta:
         managed = False

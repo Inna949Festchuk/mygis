@@ -48,4 +48,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app
 
 # Запускаем приложение 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "gisproject.wsgi:application"]
+# CMD ["gunicorn", "--bind", "0.0.0.0:8000", "gisproject.wsgi:application"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
