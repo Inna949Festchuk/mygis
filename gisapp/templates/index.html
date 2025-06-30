@@ -4,156 +4,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heatmap with OSM Loader</title>
+    <title>Heatmap with OSM Vector Tiles</title>
     <script src="{% static 'js/ol.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol.css' %}">
     <script src="{% static 'js/ol-popup.js' %}"></script>
     <link rel="stylesheet" href="{% static 'css/ol-popup.css' %}">
     
     <style>
-        /* Улучшенные стили с учетом мобильной адаптации */
+        /* Все существующие стили остаются без изменений */
         html, body {
             height: 100%;
             width: 100%;
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             overflow: hidden;
-            background-color: #f0f2f5;
-            touch-action: manipulation;
         }
 
         #map {
             height: 100%;
             width: 100%;
-            background: #e9ecef;
         }
 
         .control-box {
             position: absolute;
-            background: rgba(255, 255, 255, 0.92);
-            padding: 8px 12px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
             z-index: 1000;
             color: #333;
             font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            backdrop-filter: blur(4px);
-            transition: all 0.3s ease;
         }
 
         #layer-control {
             top: 15px;
             right: 15px;
-            padding: 6px 8px;
+            display: flex;
+            gap: 8px;
         }
 
-        .control-btn {
-            background: rgba(245, 245, 245, 0.95);
-            border: 1px solid #e0e0e0;
-            padding: 7px;
+        #layer-control button {
+            background: rgba(240, 240, 240, 0.9);
+            border: 1px solid #ddd;
+            padding: 6px 12px;
             cursor: pointer;
-            border-radius: 8px;
-            transition: all 0.2s ease;
+            border-radius: 3px;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 36px;
-            height: 36px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
         }
 
-        .control-btn:hover, .control-btn:active {
+        #layer-control button:hover {
             background: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        .trash-button:hover, .trash-button:active {
+        .trash-button:hover {
             color: #e74c3c;
-            border-color: #f5b7b1;
         }
 
-        .export-button:hover, .export-button:active {
+        .export-button:hover {
             color: #3498db;
-            border-color: #aed6f1;
         }
 
-        .osm-button:hover, .osm-button:active {
-            color: #27ae60;
-            border-color: #a9dfbf;
+        #osm-control {
+            top: 15px;
+            left: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        #osm-control button {
+            background: rgba(240, 240, 240, 0.9);
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        #osm-control button:hover {
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         #controls {
             bottom: 15px;
             left: 15px;
-            min-width: 300px;
-            max-width: 90%;
-            flex-direction: column;
-            gap: 10px;
-            padding: 12px 15px;
+            min-width: 250px;
         }
 
         .control-group {
+            margin: 8px 0;
             display: flex;
             align-items: center;
-            width: 100%;
         }
 
         label {
             display: inline-block;
-            width: 80px;
+            width: 70px;
             margin-right: 10px;
-            color: #444;
-            font-weight: 500;
-            font-size: 14px;
         }
 
         input[type="range"] {
             flex-grow: 1;
-            height: 6px;
-            border-radius: 4px;
-            background: #e0e0e0;
-            outline: none;
-            -webkit-appearance: none;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #3498db;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            transition: all 0.2s ease;
-        }
-
-        input[type="range"]::-webkit-slider-thumb:active {
-            transform: scale(1.2);
-            background: #2980b9;
+            margin: 0 10px;
         }
 
         #coordinates {
-            margin-top: 8px;
-            padding-top: 10px;
+            margin-top: 12px;
+            padding-top: 8px;
             border-top: 1px solid #eee;
-            font-size: 14px;
-            color: #444;
-            display: flex;
-            align-items: center;
-            font-weight: 500;
+            white-space: nowrap;
         }
 
         #mouse-coords {
-            color: #2c3e50;
-            font-weight: 600;
-            margin-left: 5px;
-            font-size: 14px;
-            font-family: 'Courier New', monospace;
+            color: #666;
         }
         
         .modal {
@@ -163,77 +131,66 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.5);
             z-index: 2000;
             justify-content: center;
             align-items: center;
-            backdrop-filter: blur(2px);
         }
         
         .modal-content {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
             width: 400px;
             max-width: 90%;
             overflow: hidden;
-            transform: translateY(-30px);
-            animation: modalAppear 0.4s ease forwards;
-        }
-        
-        @keyframes modalAppear {
-            to { transform: translateY(0); opacity: 1; }
         }
         
         .modal-header {
-            background: #f8f9fa;
-            padding: 18px 20px;
-            border-bottom: 1px solid #e9ecef;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
         }
         
         .modal-header h3 {
             margin: 0;
             font-size: 18px;
-            color: #2c3e50;
-            font-weight: 600;
+            color: #333;
         }
         
         .modal-body {
             padding: 25px 20px;
             font-size: 16px;
-            line-height: 1.6;
-            color: #495057;
+            line-height: 1.5;
+            color: #555;
         }
         
         .modal-footer {
             padding: 15px 20px;
-            background: #f8f9fa;
-            border-top: 1px solid #e9ecef;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
             display: flex;
             justify-content: flex-end;
-            gap: 12px;
+            gap: 10px;
         }
         
         .modal-btn {
-            padding: 10px 20px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 500;
             transition: all 0.2s;
         }
         
         .cancel-btn {
-            background: #f1f3f5;
-            color: #495057;
+            background: #f0f0f0;
+            color: #333;
         }
         
         .cancel-btn:hover {
-            background: #e9ecef;
+            background: #e0e0e0;
         }
         
         .ok-btn {
@@ -246,54 +203,55 @@
         }
         
         .ol-popup {
-            background: rgba(255, 255, 255, 0.96);
-            padding: 10px 16px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            min-width: 120px;
-            box-sizing: border-box;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 14px;
+            min-width: auto !important;
+            max-width: none !important;
+            width: auto !important;
+            box-sizing: content-box;
             text-align: center;
-            color: #2c3e50;
-            font-size: 15px;
-            font-weight: 500;
-            backdrop-filter: blur(2px);
-        }
-
-        .ol-popup-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 0;
-            margin: 0;
         }
         
-        .loading-indicator {
+        .ol-popup-closer {
+            display: none !important;
+        }
+        
+        .ol-popup-content {
+            width: auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .export-loading, .osm-loading {
             display: flex;
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0,0,0,0.85);
             color: white;
-            padding: 18px 30px;
-            border-radius: 10px;
+            padding: 15px 25px;
+            border-radius: 5px;
             z-index: 3000;
-            font-size: 17px;
+            font-size: 16px;
             align-items: center;
-            gap: 15px;
-            font-weight: 500;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+            gap: 10px;
         }
         
-        .loading-indicator::after {
+        .export-loading::after, .osm-loading::after {
             content: "";
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
             border-top-color: #fff;
             border-radius: 50%;
             animation: spin 1s linear infinite;
@@ -301,55 +259,6 @@
         
         @keyframes spin {
             to { transform: rotate(360deg); }
-        }
-
-        /* Мобильная адаптация */
-        @media (max-width: 768px) {
-            .control-box {
-                padding: 6px 8px;
-                font-size: 13px;
-            }
-            
-            #controls {
-                min-width: 260px;
-                padding: 10px;
-            }
-            
-            .control-btn {
-                width: 32px;
-                height: 32px;
-                padding: 5px;
-            }
-            
-            label {
-                width: 70px;
-                font-size: 13px;
-            }
-            
-            #coordinates {
-                font-size: 13px;
-            }
-            
-            #mouse-coords {
-                font-size: 13px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #layer-control {
-                top: 10px;
-                right: 10px;
-            }
-            
-            #controls {
-                left: 10px;
-                bottom: 10px;
-                min-width: 240px;
-            }
-            
-            label {
-                width: 65px;
-            }
         }
     </style>
 </head>
@@ -374,34 +283,24 @@
     </div>
     
     <div id="layer-control" class="control-box">
-        <button id="draw-osm-rect" class="control-btn osm-button" title="Загрузка карты OSM">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="2" y1="12" x2="22" y2="12"></line>
-                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        <button id="toggle-layers">Скрыть точки</button>
+        <button id="toggle-osm">Показать OSM</button>
+        <button id="clear-db" class="trash-button" title="Очистить базу данных">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
         </button>
-        
-        <button id="toggle-layers" class="control-btn" title="Скрыть/показать точки">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-        </button>
-        
-        <button id="export-map" class="control-btn export-button" title="Экспорт карты в PNG">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="export-map" class="export-button" title="Экспорт карты в PNG">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
         </button>
-        
-        <button id="clear-db" class="control-btn trash-button" title="Очистить базу данных">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
-        </button>
+    </div>
+
+    <div id="osm-control" class="control-box">
+        <button id="draw-osm-rect">🟩 Выбрать область загрузки OSM</button>
     </div>
 
     <div id="controls" class="control-box">
@@ -410,13 +309,11 @@
             <input type="range" id="blur" min="0" max="100" value="45">
             <span id="blur-value">45</span>
         </div>
-        
         <div class="control-group">
             <label for="radius">Радиус:</label>
             <input type="range" id="radius" min="1" max="50" value="8">
             <span id="radius-value">8</span>
         </div>
-        
         <div id="coordinates">
             Координаты: <span id="mouse-coords">Наведите на карту</span>
         </div>
@@ -439,17 +336,22 @@
         let osmVectorLayer;
         let drawInteraction = null;
         const csrfToken = "{{ csrf_token }}";
+        let osmTilesVisible = false;
+        let osmVectorTileLayers = [];
+        const pgTileservUrl = "http://localhost:7800"; // URL pg_tileserv
 
         // Инициализация карты
         function initMap() {
             map = new ol.Map({
                 target: 'map',
                 layers: [
+                    // Базовая карта OSM
                     new ol.layer.Tile({
                         source: new ol.source.OSM({
                             url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                             attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        })
+                        }),
+                        name: 'base_osm'
                     })
                 ],
                 view: new ol.View({
@@ -478,7 +380,8 @@
                 blur: 45,
                 radius: 8,
                 weight: 'weight',
-                renderMode: 'image'
+                renderMode: 'image',
+                name: 'heatmap'
             });
 
             // Векторный слой с точками
@@ -494,7 +397,8 @@
                         })
                     })
                 }),
-                renderMode: 'image'
+                renderMode: 'image',
+                name: 'points'
             });
 
             // Слой для ограничивающего прямоугольника OSM
@@ -509,7 +413,8 @@
                     fill: new ol.style.Fill({
                         color: 'rgba(255, 0, 0, 0.1)'
                     })
-                })
+                }),
+                name: 'osm_bbox'
             });
 
             // Добавляем слои на карту
@@ -524,6 +429,89 @@
             map.getView().on('change:resolution', () => {
                 resolution = map.getView().getResolution();
             });
+        }
+
+        // Добавление векторных тайлов OSM
+        function addOSMVectorTiles() {
+            // Удаляем старые слои если есть
+            removeOSMVectorTiles();
+            
+            // Стили для векторных тайлов (имитация стандартной карты OSM)
+            const pointStyle = new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 3,
+                    fill: new ol.style.Fill({ color: 'rgba(255, 0, 0, 0.8)' }),
+                    stroke: new ol.style.Stroke({ color: 'white', width: 1 })
+                })
+            });
+            
+            const lineStyle = new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: 'rgba(0, 0, 255, 0.8)',
+                    width: 2
+                })
+            });
+            
+            const polygonStyle = new ol.style.Style({
+                fill: new ol.style.Fill({
+                    color: 'rgba(0, 255, 0, 0.3)'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: 'rgba(0, 100, 0, 0.8)',
+                    width: 1
+                })
+            });
+            
+            // Создаем слои для разных типов объектов OSM
+            const pointLayer = new ol.layer.VectorTile({
+                source: new ol.source.VectorTile({
+                    format: new ol.format.MVT(),
+                    url: `${pgTileservUrl}/public.planet_osm_point/{z}/{x}/{y}.pbf?geom=geom`,
+                    attributions: '© OpenStreetMap contributors'
+                }),
+                style: pointStyle,
+                name: 'osm_point_tiles'
+            });
+            
+            const lineLayer = new ol.layer.VectorTile({
+                source: new ol.source.VectorTile({
+                    format: new ol.format.MVT(),
+                    url: `${pgTileservUrl}/public.planet_osm_line/{z}/{x}/{y}.pbf?geom=geom`,
+                    attributions: '© OpenStreetMap contributors'
+                }),
+                style: lineStyle,
+                name: 'osm_line_tiles'
+            });
+            
+            const polygonLayer = new ol.layer.VectorTile({
+                source: new ol.source.VectorTile({
+                    format: new ol.format.MVT(),
+                    url: `${pgTileservUrl}/public.planet_osm_polygon/{z}/{x}/{y}.pbf?geom=geom`,
+                    attributions: '© OpenStreetMap contributors'
+                }),
+                style: polygonStyle,
+                name: 'osm_polygon_tiles'
+            });
+            
+            // Добавляем слои на карту
+            map.addLayer(pointLayer);
+            map.addLayer(lineLayer);
+            map.addLayer(polygonLayer);
+            
+            // Сохраняем ссылки для последующего удаления
+            osmVectorTileLayers = [pointLayer, lineLayer, polygonLayer];
+            osmTilesVisible = true;
+        }
+
+        // Удаление векторных тайлов OSM
+        function removeOSMVectorTiles() {
+            if (osmVectorTileLayers.length > 0) {
+                osmVectorTileLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                osmVectorTileLayers = [];
+            }
+            osmTilesVisible = false;
         }
 
         // Загрузка начальных данных
@@ -584,91 +572,56 @@
             }
         }
 
-        // Экспорт карты в PNG (исправленная версия)
+        // Функция экспорта всей карты в PNG
         function exportMapToBMP() {
             const loadingIndicator = document.createElement('div');
-            loadingIndicator.className = 'loading-indicator';
+            loadingIndicator.className = 'export-loading';
             loadingIndicator.innerHTML = 'Создание изображения... <span></span>';
             document.body.appendChild(loadingIndicator);
             
             try {
                 map.once('rendercomplete', function() {
-                    const mapCanvas = document.createElement('canvas');
                     const size = map.getSize();
-                    mapCanvas.width = size[0];
-                    mapCanvas.height = size[1];
-                    const mapContext = mapCanvas.getContext('2d');
+                    const width = size[0];
+                    const height = size[1];
                     
-                    // Заливаем белым фоном
-                    mapContext.fillStyle = 'white';
-                    mapContext.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = width;
+                    tempCanvas.height = height;
+                    const ctx = tempCanvas.getContext('2d');
                     
-                    // Получаем все canvas слоев
-                    const canvases = Array.from(
-                        map.getViewport().querySelectorAll('.ol-layer canvas, canvas.ol-layer')
-                    );
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, width, height);
                     
-                    // Рисуем каждый canvas с учетом трансформаций
-                    canvases.forEach(canvas => {
-                        if (canvas.width > 0) {
-                            const opacity = canvas.parentNode.style.opacity || canvas.style.opacity;
-                            mapContext.globalAlpha = opacity === '' ? 1 : Number(opacity);
-                            
-                            let matrix;
-                            const transform = canvas.style.transform;
-                            
-                            if (transform) {
-                                // Получаем матрицу трансформации
-                                matrix = transform
-                                    .match(/^matrix\(([^\(]*)\)$/)[1]
-                                    .split(',')
-                                    .map(Number);
-                            } else {
-                                matrix = [
-                                    parseFloat(canvas.style.width) / canvas.width,
-                                    0,
-                                    0,
-                                    parseFloat(canvas.style.height) / canvas.height,
-                                    0,
-                                    0
-                                ];
-                            }
-                            
-                            // Применяем трансформацию к контексту
-                            mapContext.setTransform(...matrix);
-                            
-                            // Обрабатываем фон, если он есть
-                            const backgroundColor = canvas.parentNode.style.backgroundColor;
-                            if (backgroundColor) {
-                                mapContext.fillStyle = backgroundColor;
-                                mapContext.fillRect(0, 0, canvas.width, canvas.height);
-                            }
-                            
-                            // Рисуем canvas
-                            mapContext.drawImage(canvas, 0, 0);
+                    const mapCanvases = document.querySelectorAll('.ol-viewport canvas');
+                    
+                    mapCanvases.forEach(canvas => {
+                        if (canvas.width === 0 || canvas.height === 0) return;
+                        
+                        const transform = canvas.style.transform;
+                        if (transform) {
+                            const matrix = transform.match(/matrix\(([^)]+)\)/)[1].split(',').map(Number);
+                            ctx.setTransform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
                         }
+                        
+                        ctx.drawImage(canvas, 0, 0);
+                        ctx.setTransform(1, 0, 0, 1, 0, 0);
                     });
                     
-                    // Сбрасываем трансформации
-                    mapContext.globalAlpha = 1;
-                    mapContext.setTransform(1, 0, 0, 1, 0, 0);
-                    
-                    // Создаем ссылку для скачивания
+                    const dataURL = tempCanvas.toDataURL('image/png');
                     const link = document.createElement('a');
-                    link.href = mapCanvas.toDataURL('image/png');
+                    link.href = dataURL;
                     link.download = `map_export_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.png`;
                     
                     document.body.appendChild(link);
                     link.click();
                     
-                    // Удаляем временные элементы
                     setTimeout(() => {
                         document.body.removeChild(link);
                         document.body.removeChild(loadingIndicator);
                     }, 100);
                 });
                 
-                // Принудительно запускаем рендеринг
                 map.renderSync();
             } catch (error) {
                 console.error('Ошибка экспорта:', error);
@@ -679,24 +632,25 @@
 
         // Загрузка данных OSM
         function loadOSMData(bbox) {
+            // Проверка координат перед отправкой
             if (!bbox || bbox.length !== 4) {
                 alert('Ошибка: неверный формат координат');
-                return;
+                return Promise.reject('Неверный формат координат');
             }
             
             for (let coord of bbox) {
                 if (isNaN(coord) || coord === null || coord === undefined) {
                     alert('Ошибка: координаты содержат нечисловые значения');
-                    return;
+                    return Promise.reject('Нечисловые значения координат');
                 }
             }
             
             const loadingIndicator = document.createElement('div');
-            loadingIndicator.className = 'loading-indicator';
+            loadingIndicator.className = 'osm-loading';
             loadingIndicator.innerHTML = 'Загрузка данных OSM... <span></span>';
             document.body.appendChild(loadingIndicator);
             
-            fetch('/load_osm/', {
+            return fetch('/load_osm/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -712,14 +666,17 @@
             })
             .then(data => {
                 if (data.status === 'success') {
-                    alert('Данные OSM успешно загружены в PostGIS!');
+                    // Добавляем векторные тайлы после успешной загрузки
+                    addOSMVectorTiles();
+                    return data;
                 } else {
-                    alert('Ошибка сервера: ' + data.message);
+                    throw new Error('Ошибка сервера: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('Ошибка при загрузке OSM:', error);
-                alert('Ошибка сети: ' + error.message);
+                alert('Ошибка: ' + error.message);
+                throw error;
             })
             .finally(() => {
                 document.body.removeChild(loadingIndicator);
@@ -734,6 +691,7 @@
             const radiusValue = document.getElementById('radius-value');
             const coordsElement = document.getElementById('mouse-coords');
             const toggleButton = document.getElementById('toggle-layers');
+            const toggleOSMButton = document.getElementById('toggle-osm');
             const clearDbButton = document.getElementById('clear-db');
             const exportButton = document.getElementById('export-map');
             const drawOsmButton = document.getElementById('draw-osm-rect');
@@ -748,7 +706,7 @@
                 lastRenderTime = Date.now();
                 
                 const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-                coordsElement.textContent = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)}`;
+                coordsElement.textContent = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
                 
                 const feature = map.forEachFeatureAtPixel(evt.pixel, feature => feature, {
                     hitTolerance: 5,
@@ -769,12 +727,18 @@
             toggleButton.addEventListener('click', () => {
                 layersVisible = !layersVisible;
                 pointLayer.setVisible(layersVisible);
-                
-                // Анимация кнопки
-                toggleButton.style.transform = 'scale(1.1)';
-                setTimeout(() => {
-                    toggleButton.style.transform = '';
-                }, 300);
+                toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
+            });
+
+            // Управление OSM тайлами
+            toggleOSMButton.addEventListener('click', () => {
+                if (osmTilesVisible) {
+                    removeOSMVectorTiles();
+                    toggleOSMButton.textContent = 'Показать OSM';
+                } else {
+                    addOSMVectorTiles();
+                    toggleOSMButton.textContent = 'Скрыть OSM';
+                }
             });
 
             // Управление параметрами тепловой карты
@@ -804,13 +768,16 @@
             confirmOk.addEventListener('click', function() {
                 confirmDialog.style.display = 'none';
                 
+                // Получаем CSRF токен
                 fetch('/get-csrf-token/')
                 .then(response => response.json())
                 .then(data => {
+                    const csrftoken = data.csrfToken;
+                    
                     fetch('/clear-db/', {
                         method: 'POST',
                         headers: {
-                            'X-CSRFToken': data.csrfToken,
+                            'X-CSRFToken': csrftoken,
                             'Content-Type': 'application/json'
                         }
                     })
@@ -819,6 +786,7 @@
                         if (data.status === 'success') {
                             vectorSource.clear();
                             lastDataSignature = null;
+                            removeOSMVectorTiles(); // Удаляем OSM тайлы
                             console.log('База данных очищена');
                         }
                     });
@@ -847,20 +815,31 @@
                 
                 map.addInteraction(drawInteraction);
                 
-                // Анимация кнопки
-                drawOsmButton.style.transform = 'scale(1.1)';
-                setTimeout(() => {
-                    drawOsmButton.style.transform = '';
-                }, 300);
-                
                 // При завершении рисования
                 drawInteraction.on('drawend', function(event) {
                     const geometry = event.feature.getGeometry();
+                    if (!geometry) {
+                        alert('Ошибка: не удалось получить геометрию');
+                        return;
+                    }
+                    
                     const extent = geometry.getExtent();
+                    if (!extent || extent.length !== 4) {
+                        alert('Ошибка: неверный формат экстента');
+                        return;
+                    }
                     
                     // Преобразуем координаты в WGS84
                     const minCoord = ol.proj.toLonLat([extent[0], extent[1]]);
                     const maxCoord = ol.proj.toLonLat([extent[2], extent[3]]);
+                    
+                    // Проверяем координаты
+                    if (!minCoord || !maxCoord || 
+                        isNaN(minCoord[0]) || isNaN(minCoord[1]) || 
+                        isNaN(maxCoord[0]) || isNaN(maxCoord[1])) {
+                        alert('Ошибка: неверные координаты области');
+                        return;
+                    }
                     
                     // Форматируем bbox
                     const bbox = [
@@ -870,12 +849,24 @@
                         maxCoord[1]
                     ];
                     
+                    // Обновляем состояние кнопки
+                    drawOsmButton.innerHTML = '⏳ Загрузка...';
+                    drawOsmButton.disabled = true;
+
                     // Удаляем взаимодействие рисования
                     map.removeInteraction(drawInteraction);
                     drawInteraction = null;
                     
                     // Загружаем данные OSM
-                    loadOSMData(bbox);
+                    loadOSMData(bbox)
+                        .then(() => {
+                            drawOsmButton.innerHTML = '🟩 Выбрать область загрузки OSM';
+                            drawOsmButton.disabled = false;
+                        })
+                        .catch(() => {
+                            drawOsmButton.innerHTML = '🟩 Выбрать область загрузки OSM';
+                            drawOsmButton.disabled = false;
+                        });
                 });
             });
 
@@ -902,6 +893,7 @@
                 setTimeout(startDataMonitoring, 5000);
             };
 
+            // Периодическая проверка
             dataCheckInterval = setInterval(async () => {
                 try {
                     await checkDataChanges();

@@ -81,6 +81,17 @@ services:
       timeout: 5s
       retries: 5
 
+  tileserv:
+    image: pramsey/pg_tileserv
+    container_name: pg_tileserv
+    environment:
+      DATABASE_URL: "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable"
+    ports:
+      - "7800:7800"
+    depends_on:
+      db:
+        condition: service_healthy
+
   web:
     build: .
     container_name: django
