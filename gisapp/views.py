@@ -195,86 +195,52 @@ from django.contrib.gis.geos import Polygon
 def load_osm(request):
     if request.method == 'POST':
         try:
-            # Парсим JSON данные
             data = json.loads(request.body)
             bbox = data.get('bbox')
             
-            # Проверка наличия и формата bbox
+            # Валидация bbox
             if not bbox or len(bbox) != 4:
                 return JsonResponse({
                     'status': 'error', 
-                    'message': 'Неверный формат bbox. Ожидается массив [west, south, east, north]'
+                    'message': 'Неверный формат bbox'
                 })
             
-            # Проверка типа данных
-            try:
-                west = float(bbox[0])
-                south = float(bbox[1])
-                east = float(bbox[2])
-                north = float(bbox[3])
-            except (TypeError, ValueError) as e:
-                return JsonResponse({
-                    'status': 'error', 
-                    'message': f'Ошибка преобразования координат: {str(e)}. Полученные значения: {bbox}'
-                })
-            
-            # Проверка валидности координат
-            if west >= east or south >= north:
+            # Создаем полигон для проверки
+            poly = Polygon.from_bbox(bbox)
+            if poly.area > 0.25:
                 return JsonResponse({
                     'status': 'error',
-                    'message': f'Некорректные значения координат: west={west}, south={south}, east={east}, north={north}'
+                    'message': 'Область слишком большая'
                 })
             
-            # Проверка размера области (не более 0.25 кв. градусов)
-            area = (east - west) * (north - south)
-            if area > 0.25:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Область слишком большая ({area:.4f} кв. градусов). Максимальный размер: 0.25 кв. градусов.'
-                })
-            
-            # Создаем запрос к Overpass API
+            # Формируем запрос к Overpass API
             overpass_query = f"""
                 [out:xml][timeout:180];
                 (
-                    node({south}, {west}, {north}, {east});
-                    way({south}, {west}, {north}, {east});
-                    relation({south}, {west}, {north}, {east});
+                    node({bbox[1]}, {bbox[0]}, {bbox[3]}, {bbox[2]});
+                    way({bbox[1]}, {bbox[0]}, {bbox[3]}, {bbox[2]});
+                    relation({bbox[1]}, {bbox[0]}, {bbox[3]}, {bbox[2]});
                 );
                 (._;>;);
                 out body;
             """
             
-            # Отправляем запрос к Overpass API
-            try:
-                response = requests.post(
-                    'https://overpass-api.de/api/interpreter',
-                    data=overpass_query,
-                    headers={'Content-Type': 'application/x-www-form-urlencoded'},
-                    timeout=300  # 5 минут таймаут
-                )
-                response.raise_for_status()
-            except requests.exceptions.RequestException as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Ошибка при запросе к Overpass API: {str(e)}'
-                })
+            # Отправка запроса
+            response = requests.post(
+                'https://overpass-api.de/api/interpreter',
+                data=overpass_query,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                timeout=300
+            )
+            response.raise_for_status()
             
-            # Создаем временный файл для данных OSM
-            try:
-                with tempfile.NamedTemporaryFile(suffix='.osm', delete=False) as tmpfile:
-                    tmpfile.write(response.content)
-                    osm_file_path = tmpfile.name
-            except IOError as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Ошибка создания временного файла: {str(e)}'
-                })
+            # Сохранение во временный файл
+            with tempfile.NamedTemporaryFile(suffix='.osm', delete=False) as tmpfile:
+                tmpfile.write(response.content)
+                osm_file_path = tmpfile.name
             
-            # Получаем параметры подключения к БД
+            # Загрузка в PostGIS
             db_config = settings.DATABASES['default']
-            
-            # Формируем команду для osm2pgsql
             cmd = [
                 'osm2pgsql',
                 '--create',
@@ -289,94 +255,38 @@ def load_osm(request):
                 osm_file_path
             ]
             
-            # Устанавливаем переменные окружения
             env = os.environ.copy()
             env['PGPASSWORD'] = db_config['PASSWORD']
             
-            # Выполняем команду osm2pgsql
-            try:
-                result = subprocess.run(
-                    cmd,
-                    env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=600  # 10 минут таймаут
-                )
-                
-                if result.returncode != 0:
-                    # Формируем сообщение об ошибке
-                    error_msg = f"Ошибка osm2pgsql (код {result.returncode}): "
-                    if result.stderr:
-                        error_msg += result.stderr[:500]  # Берем первые 500 символов ошибки
-                    else:
-                        error_msg += "Без сообщения об ошибке"
-                    
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': error_msg
-                    })
-            except subprocess.TimeoutExpired:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Превышено время выполнения osm2pgsql (10 минут)'
-                })
-            except Exception as e:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': f'Ошибка выполнения osm2pgsql: {str(e)}'
-                })
-            finally:
-                # Удаляем временный файл в любом случае
-                try:
-                    os.unlink(osm_file_path)
-                except OSError:
-                    pass
+            result = subprocess.run(
+                cmd,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=600
+            )
             
-            # Проверяем, что данные действительно загружены
-            try:
-                with connection.cursor() as cursor:
-                    # Проверяем наличие точек
-                    cursor.execute("SELECT COUNT(*) FROM planet_osm_point")
-                    point_count = cursor.fetchone()[0]
-                    
-                    # Проверяем наличие линий
-                    cursor.execute("SELECT COUNT(*) FROM planet_osm_line")
-                    line_count = cursor.fetchone()[0]
-                    
-                    # Проверяем наличие полигонов
-                    cursor.execute("SELECT COUNT(*) FROM planet_osm_polygon")
-                    polygon_count = cursor.fetchone()[0]
-                    
-                    total_count = point_count + line_count + polygon_count
-            except Exception as e:
+            # Удаление временного файла
+            os.unlink(osm_file_path)
+            
+            if result.returncode != 0:
                 return JsonResponse({
                     'status': 'error',
-                    'message': f'Данные загружены, но возникла ошибка при проверке: {str(e)}'
-                })
-            
-            if total_count == 0:
-                return JsonResponse({
-                    'status': 'warning',
-                    'message': 'Данные загружены, но не найдено объектов OSM в указанной области'
+                    'message': f'Ошибка osm2pgsql: {result.stderr[:500]}'
                 })
             
             return JsonResponse({
                 'status': 'success',
-                'message': f'Данные OSM успешно загружены! Объектов: точек={point_count}, линий={line_count}, полигонов={polygon_count}'
+                'message': 'Данные OSM успешно загружены'
             })
             
-        except json.JSONDecodeError:
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Неверный формат JSON в теле запроса'
-            })
         except Exception as e:
             return JsonResponse({
                 'status': 'error',
-                'message': f'Необработанная ошибка: {str(e)}'
+                'message': f'Ошибка: {str(e)}'
             })
     
     return JsonResponse({
         'status': 'error',
-        'message': 'Неверный метод запроса. Используйте POST.'
+        'message': 'Неверный метод запроса'
     })

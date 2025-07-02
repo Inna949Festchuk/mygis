@@ -1,10 +1,4 @@
 from django.contrib.gis.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.http import HttpRequest
-# from .views import get_context_data
-from django.template.loader import get_template
-from django.template import Context
 
 class ValuesPoints(models.Model):
     utc_time = models.FloatField(null=True, blank=True)
@@ -19,11 +13,8 @@ class ValuesPoints(models.Model):
     f2 = models.FloatField(null=True, blank=True)
     f3 = models.FloatField(null=True, blank=True)
     f12 = models.CharField(max_length=254, null=True, blank=True)
-    
+
     geom = models.MultiPointField(srid=4326, null=True, blank=True) # WGS84=EPSG:4326, WebMercator=EPSG:3857
-
-
-# Модели для данных OSM
 
 class OSMPoint(models.Model):
     osm_id = models.BigIntegerField(primary_key=True)
@@ -31,7 +22,7 @@ class OSMPoint(models.Model):
     way = models.PointField(srid=3857)
     
     class Meta:
-        managed = False  # Таблица будет управляться osm2pgsql
+        managed = False # Таблица будет управляться osm2pgsql
         db_table = 'planet_osm_point'
 
 class OSMLine(models.Model):
@@ -51,4 +42,3 @@ class OSMPolygon(models.Model):
     class Meta:
         managed = False
         db_table = 'planet_osm_polygon'
-        

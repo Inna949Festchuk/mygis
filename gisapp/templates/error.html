@@ -5042,3 +5042,1037 @@
     </script>
 </body>
 </html>
+
+
+
+РАБОЧИЙ С КАРТОЙ
+
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heatmap with OSM Vector Tiles</title>
+    <script src="{% static 'js/ol.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/ol.css' %}">
+    <script src="{% static 'js/ol-popup.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'css/ol-popup.css' %}">
+    
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .control-box {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 10px 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            z-index: 1000;
+            color: #333;
+            font-size: 14px;
+        }
+
+        #layer-control {
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        #layer-control button {
+            background: rgba(240, 240, 240, 0.9);
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #layer-control button:hover {
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .trash-button:hover {
+            color: #e74c3c;
+        }
+
+        .export-button:hover {
+            color: #3498db;
+        }
+
+        #osm-control {
+            top: 15px;
+            left: 15px;
+            display: flex;
+            gap: 8px;
+        }
+
+        #osm-control button {
+            background: rgba(240, 240, 240, 0.9);
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        #osm-control button:hover {
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #controls {
+            bottom: 15px;
+            left: 15px;
+            min-width: 250px;
+        }
+
+        .control-group {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        label {
+            display: inline-block;
+            width: 70px;
+            margin-right: 10px;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            margin: 0 10px;
+        }
+
+        #coordinates {
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+            white-space: nowrap;
+        }
+
+        #mouse-coords {
+            color: #666;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            width: 400px;
+            max-width: 90%;
+            overflow: hidden;
+        }
+        
+        .modal-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        
+        .modal-body {
+            padding: 25px 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #555;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            background: #f9f9f9;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .cancel-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .cancel-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .ok-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .ok-btn:hover {
+            background: #c0392b;
+        }
+        
+        .ol-popup {
+            background: rgba(255, 255, 255, 0.85);
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-size: 14px;
+            min-width: auto !important;
+            max-width: none !important;
+            width: auto !important;
+            box-sizing: content-box;
+            text-align: center;
+        }
+        
+        .ol-popup-closer {
+            display: none !important;
+        }
+        
+        .ol-popup-content {
+            width: auto !important;
+            min-width: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .export-loading, .osm-loading {
+            display: flex;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            z-index: 3000;
+            font-size: 16px;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .export-loading::after, .osm-loading::after {
+            content: "";
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map" class="map"></div>
+    <div id="popup"></div>
+    
+    <div id="confirm-dialog" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Подтверждение действия</h3>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите очистить базу данных? Все данные будут удалены.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="confirm-cancel" class="modal-btn cancel-btn">Отмена</button>
+                <button id="confirm-ok" class="modal-btn ok-btn">Очистить</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="layer-control" class="control-box">
+        <button id="toggle-layers">Скрыть точки</button>
+        <button id="toggle-osm">Показать OSM</button>
+        <button id="clear-db" class="trash-button" title="Очистить базу данных">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>
+        <button id="export-map" class="export-button" title="Экспорт карты в PNG">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        </button>
+    </div>
+
+    <div id="osm-control" class="control-box">
+        <button id="draw-osm-rect">🟩 Выбрать область загрузки OSM</button>
+    </div>
+
+    <div id="controls" class="control-box">
+        <div class="control-group">
+            <label for="blur">Размытие:</label>
+            <input type="range" id="blur" min="0" max="100" value="45">
+            <span id="blur-value">45</span>
+        </div>
+        <div class="control-group">
+            <label for="radius">Радиус:</label>
+            <input type="range" id="radius" min="1" max="50" value="8">
+            <span id="radius-value">8</span>
+        </div>
+        <div class="control-group">
+            <label for="osm-opacity">Прозрачность:</label>
+            <input type="range" id="osm-opacity" min="0" max="100" value="70">
+            <span id="osm-opacity-value">70%</span>
+        </div>
+        <div id="coordinates">
+            Координаты: <span id="mouse-coords">Наведите на карту</span>
+        </div>
+    </div>
+
+    <script>
+        // Основные переменные
+        let map;
+        let vectorSource;
+        let heatmapLayer;
+        let pointLayer;
+        let eventSource;
+        let lastDataSignature = null;
+        let layersVisible = true;
+        let resolution;
+        let lastRenderTime = 0;
+        let popup;
+        let dataCheckInterval;
+        let osmVectorSource;
+        let osmVectorLayer;
+        let drawInteraction = null;
+        const csrfToken = "{{ csrf_token }}";
+        let osmTilesVisible = false;
+        let osmVectorTileLayers = [];
+        const pgTileservUrl = "http://localhost:7800"; // URL pg_tileserv
+
+        // Инициализация карты
+        function initMap() {
+            map = new ol.Map({
+                target: 'map',
+                layers: [
+                    new ol.layer.Tile({
+                        source: new ol.source.OSM({
+                            url: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            attributions: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        }),
+                        name: 'base_osm'
+                    })
+                ],
+                view: new ol.View({
+                    center: ol.proj.fromLonLat([20.6531253, 54.6590630]),
+                    zoom: 15 // Уменьшенный зум для лучшего отображения OSM объектов
+                }),
+                renderer: 'canvas'
+            });
+
+            // Инициализация popup
+            popup = new ol.Overlay.Popup({
+                element: document.getElementById('popup'),
+                positioning: 'bottom-center',
+                stopEvent: false,
+                autoPan: false,
+                closeBox: false
+            });
+            map.addOverlay(popup);
+
+            // Источник для тепловой карты
+            vectorSource = new ol.source.Vector({ wrapX: false });
+            
+            // Тепловая карта
+            heatmapLayer = new ol.layer.Heatmap({
+                source: vectorSource,
+                blur: 45,
+                radius: 8,
+                weight: 'weight',
+                renderMode: 'image',
+                name: 'heatmap'
+            });
+
+            // Векторный слой с точками
+            pointLayer = new ol.layer.Vector({
+                source: vectorSource,
+                style: new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: 2,
+                        fill: new ol.style.Fill({ color: 'rgba(140, 140, 140, 0.8)' }),
+                        stroke: new ol.style.Stroke({
+                            color: 'rgba(100, 100, 100, 0.9)',
+                            width: 1
+                        })
+                    })
+                }),
+                renderMode: 'image',
+                name: 'points'
+            });
+
+            // Слой для ограничивающего прямоугольника OSM
+            osmVectorSource = new ol.source.Vector({ wrapX: false });
+            osmVectorLayer = new ol.layer.Vector({
+                source: osmVectorSource,
+                style: new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: 'rgba(255, 0, 0, 0.8)',
+                        width: 2
+                    }),
+                    fill: new ol.style.Fill({
+                        color: 'rgba(255, 0, 0, 0.1)'
+                    })
+                }),
+                name: 'osm_bbox'
+            });
+
+            // Добавляем слои на карту
+            map.addLayer(heatmapLayer);
+            map.addLayer(pointLayer);
+            map.addLayer(osmVectorLayer);
+            
+            // Кешируем разрешение карты 
+            resolution = map.getView().getResolution();
+            
+            // Обновление разрешения при изменении зума
+            map.getView().on('change:resolution', () => {
+                resolution = map.getView().getResolution();
+            });
+        }
+
+        // Добавление векторных тайлов OSM
+        function addOSMVectorTiles() {
+            // Удаляем старые слои если есть
+            removeOSMVectorTiles();
+            
+            // Создаем стили для разных типов объектов
+            const pointStyle = new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: 5,
+                    fill: new ol.style.Fill({color: '#FF5252'}),
+                    stroke: new ol.style.Stroke({
+                        color: '#fff',
+                        width: 1
+                    })
+                })
+            });
+            
+            const lineStyle = new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: '#1976D2',
+                    width: 2
+                })
+            });
+            
+            const polygonStyle = new ol.style.Style({
+                fill: new ol.style.Fill({
+                    color: 'rgba(76, 175, 80, 0.3)'
+                }),
+                stroke: new ol.style.Stroke({
+                    color: '#2E7D32',
+                    width: 1
+                })
+            });
+            
+            // Создаем слои для разных типов объектов OSM
+            const pointLayer = new ol.layer.VectorTile({
+                source: new ol.source.VectorTile({
+                    format: new ol.format.MVT(),
+                    url: `${pgTileservUrl}/public.planet_osm_point/{z}/{x}/{y}.pbf`,
+                    attributions: '© OpenStreetMap contributors'
+                }),
+                style: function(feature) {
+                    const tags = feature.getProperties();
+                    
+                    // Стилизация по типам объектов
+                    if (tags.natural === 'tree') {
+                        return new ol.style.Style({
+                            image: new ol.style.Circle({
+                                radius: 4,
+                                fill: new ol.style.Fill({color: '#388E3C'})
+                            })
+                        });
+                    }
+                    return pointStyle;
+                },
+                name: 'osm_point_tiles',
+                className: 'osm-layer'
+            });
+            
+            const lineLayer = new ol.layer.VectorTile({
+                source: new ol.source.VectorTile({
+                    format: new ol.format.MVT(),
+                    url: `${pgTileservUrl}/public.planet_osm_line/{z}/{x}/{y}.pbf`,
+                    attributions: '© OpenStreetMap contributors'
+                }),
+                style: function(feature) {
+                    const tags = feature.getProperties();
+                    const highway = tags.highway;
+                    
+                    // Стилизация дорог по типам
+                    const colors = {
+                        'motorway': '#D32F2F',
+                        'trunk': '#E64A19',
+                        'primary': '#F57C00',
+                        'secondary': '#FFA000',
+                        'tertiary': '#FBC02D',
+                        'residential': '#9E9E9E',
+                        'service': '#757575',
+                        'footway': '#BDBDBD',
+                        'default': '#1976D2'
+                    };
+                    
+                    const widths = {
+                        'motorway': 6,
+                        'trunk': 5,
+                        'primary': 4,
+                        'secondary': 3,
+                        'tertiary': 2,
+                        'residential': 2,
+                        'service': 1,
+                        'footway': 1,
+                        'default': 2
+                    };
+                    
+                    return new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: colors[highway] || colors['default'],
+                            width: widths[highway] || widths['default']
+                        })
+                    });
+                },
+                name: 'osm_line_tiles',
+                className: 'osm-layer'
+            });
+            
+            const polygonLayer = new ol.layer.VectorTile({
+                source: new ol.source.VectorTile({
+                    format: new ol.format.MVT(),
+                    url: `${pgTileservUrl}/public.planet_osm_polygon/{z}/{x}/{y}.pbf`,
+                    attributions: '© OpenStreetMap contributors'
+                }),
+                style: function(feature) {
+                    const tags = feature.getProperties();
+                    
+                    // Стилизация по типам полигонов
+                    if (tags.building) {
+                        return new ol.style.Style({
+                            fill: new ol.style.Fill({
+                                color: 'rgba(158, 158, 158, 0.6)'
+                            }),
+                            stroke: new ol.style.Stroke({
+                                color: '#424242',
+                                width: 1
+                            })
+                        });
+                    }
+                    
+                    if (tags.natural === 'water' || tags.waterway) {
+                        return new ol.style.Style({
+                            fill: new ol.style.Fill({
+                                color: 'rgba(33, 150, 243, 0.5)'
+                            })
+                        });
+                    }
+                    
+                    return polygonStyle;
+                },
+                name: 'osm_polygon_tiles',
+                className: 'osm-layer'
+            });
+            
+            // Добавляем слои на карту
+            map.addLayer(pointLayer);
+            map.addLayer(lineLayer);
+            map.addLayer(polygonLayer);
+            
+            // Сохраняем ссылки для последующего удаления
+            osmVectorTileLayers = [pointLayer, lineLayer, polygonLayer];
+            osmTilesVisible = true;
+            
+            // Применяем начальную прозрачность
+            updateOSMOpacity();
+        }
+
+        // Обновление прозрачности OSM слоев
+        function updateOSMOpacity() {
+            const opacity = document.getElementById('osm-opacity').value / 100;
+            osmVectorTileLayers.forEach(layer => {
+                layer.setOpacity(opacity);
+            });
+        }
+
+        // Удаление векторных тайлов OSM
+        function removeOSMVectorTiles() {
+            if (osmVectorTileLayers.length > 0) {
+                osmVectorTileLayers.forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                osmVectorTileLayers = [];
+            }
+            osmTilesVisible = false;
+        }
+
+        // Загрузка начальных данных
+        function loadInitialData() {
+            try {
+                const points = {{ context|safe }};
+                const features = new ol.format.GeoJSON().readFeatures(points, {
+                    featureProjection: 'EPSG:3857'
+                });
+                vectorSource.addFeatures(features);
+                
+                // Инициализируем подпись данных
+                lastDataSignature = calculateDataSignature(features);
+            } catch (e) {
+                console.error('Ошибка загрузки начальных данных:', e);
+            }
+        }
+
+        // Функция для вычисления подписи данных
+        function calculateDataSignature(features) {
+            if (features.length === 0) return 'empty';
+            
+            const coordsArray = features.map(feature => {
+                const coords = feature.getGeometry().getCoordinates();
+                return `${coords[0]},${coords[1]},${feature.get('f3') || 0}`;
+            });
+            
+            return coordsArray.sort().join('|');
+        }
+
+        // Проверка изменений данных
+        async function checkDataChanges() {
+            try {
+                const response = await fetch('/geojson-data/');
+                if (!response.ok) throw new Error('Ошибка сети');
+                
+                const data = await response.json();
+                const features = new ol.format.GeoJSON().readFeatures(data, {
+                    featureProjection: 'EPSG:3857'
+                });
+                
+                // Вычисляем текущую подпись
+                const currentSignature = calculateDataSignature(features);
+                
+                // Сравниваем с последней известной подписью
+                if (currentSignature !== lastDataSignature) {
+                    // Обновляем данные на карте
+                    vectorSource.clear();
+                    vectorSource.addFeatures(features);
+                    lastDataSignature = currentSignature;
+                    console.log('Данные обновлены. Новых точек:', features.length);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Ошибка при проверке данных:', error);
+                return false;
+            }
+        }
+
+        // Функция экспорта всей карты в PNG
+        function exportMapToBMP() {
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'export-loading';
+            loadingIndicator.innerHTML = 'Создание изображения... <span></span>';
+            document.body.appendChild(loadingIndicator);
+            
+            try {
+                map.once('rendercomplete', function() {
+                    const size = map.getSize();
+                    const width = size[0];
+                    const height = size[1];
+                    
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = width;
+                    tempCanvas.height = height;
+                    const ctx = tempCanvas.getContext('2d');
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, width, height);
+                    
+                    const mapCanvases = document.querySelectorAll('.ol-viewport canvas');
+                    
+                    mapCanvases.forEach(canvas => {
+                        if (canvas.width === 0 || canvas.height === 0) return;
+                        
+                        const transform = canvas.style.transform;
+                        if (transform) {
+                            const matrix = transform.match(/matrix\(([^)]+)\)/)[1].split(',').map(Number);
+                            ctx.setTransform(matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
+                        }
+                        
+                        ctx.drawImage(canvas, 0, 0);
+                        ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    });
+                    
+                    const dataURL = tempCanvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = dataURL;
+                    link.download = `map_export_${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}.png`;
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        document.body.removeChild(loadingIndicator);
+                    }, 100);
+                });
+                
+                map.renderSync();
+            } catch (error) {
+                console.error('Ошибка экспорта:', error);
+                alert('Ошибка при экспорте: ' + error.message);
+                document.body.removeChild(loadingIndicator);
+            }
+        }
+
+        // Загрузка данных OSM
+        function loadOSMData(bbox) {
+            // Проверка координат перед отправкой
+            if (!bbox || bbox.length !== 4) {
+                alert('Ошибка: неверный формат координат');
+                return Promise.reject('Неверный формат координат');
+            }
+            
+            for (let coord of bbox) {
+                if (isNaN(coord) || coord === null || coord === undefined) {
+                    alert('Ошибка: координаты содержат нечисловые значения');
+                    return Promise.reject('Нечисловые значения координат');
+                }
+            }
+            
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'osm-loading';
+            loadingIndicator.innerHTML = 'Загрузка данных OSM... <span></span>';
+            document.body.appendChild(loadingIndicator);
+            
+            return fetch('/load_osm/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ bbox: bbox })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // Добавляем векторные тайлы после успешной загрузки
+                    addOSMVectorTiles();
+                    return data;
+                } else {
+                    throw new Error('Ошибка сервера: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке OSM:', error);
+                alert('Ошибка: ' + error.message);
+                throw error;
+            })
+            .finally(() => {
+                document.body.removeChild(loadingIndicator);
+            });
+        }
+
+        // Инициализация элементов управления
+        function initControls() {
+            const blurInput = document.getElementById('blur');
+            const radiusInput = document.getElementById('radius');
+            const osmOpacityInput = document.getElementById('osm-opacity');
+            const blurValue = document.getElementById('blur-value');
+            const radiusValue = document.getElementById('radius-value');
+            const osmOpacityValue = document.getElementById('osm-opacity-value');
+            const coordsElement = document.getElementById('mouse-coords');
+            const toggleButton = document.getElementById('toggle-layers');
+            const toggleOSMButton = document.getElementById('toggle-osm');
+            const clearDbButton = document.getElementById('clear-db');
+            const exportButton = document.getElementById('export-map');
+            const drawOsmButton = document.getElementById('draw-osm-rect');
+            const confirmDialog = document.getElementById('confirm-dialog');
+            const confirmCancel = document.getElementById('confirm-cancel');
+            const confirmOk = document.getElementById('confirm-ok');
+
+            // Обработчик перемещения мыши
+            map.on('pointermove', (evt) => {
+                if (evt.dragging) return;
+                if (Date.now() - lastRenderTime < 100) return;
+                lastRenderTime = Date.now();
+                
+                const coords = ol.proj.transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+                coordsElement.textContent = `${coords[0].toFixed(6)}, ${coords[1].toFixed(6)} (EPSG:4326)`;
+                
+                const feature = map.forEachFeatureAtPixel(evt.pixel, feature => feature, {
+                    hitTolerance: 5,
+                    layerFilter: layer => layer === pointLayer
+                });
+
+                if (feature) {
+                    const value = feature.get('f3');
+                    popup.show(evt.coordinate, `Значение: ${value}`);
+                    map.getTargetElement().style.cursor = 'pointer';
+                } else {
+                    popup.hide();
+                    map.getTargetElement().style.cursor = '';
+                }
+            });
+
+            // Управление слоями
+            toggleButton.addEventListener('click', () => {
+                layersVisible = !layersVisible;
+                pointLayer.setVisible(layersVisible);
+                toggleButton.textContent = layersVisible ? 'Скрыть точки' : 'Показать точки';
+            });
+
+            // Управление OSM тайлами
+            toggleOSMButton.addEventListener('click', () => {
+                if (osmTilesVisible) {
+                    removeOSMVectorTiles();
+                    toggleOSMButton.textContent = 'Показать OSM';
+                } else {
+                    addOSMVectorTiles();
+                    toggleOSMButton.textContent = 'Скрыть OSM';
+                }
+            });
+
+            // Управление параметрами тепловой карты
+            blurInput.addEventListener('input', () => {
+                heatmapLayer.setBlur(parseInt(blurInput.value));
+                blurValue.textContent = blurInput.value;
+            });
+
+            radiusInput.addEventListener('input', () => {
+                heatmapLayer.setRadius(parseInt(radiusInput.value));
+                radiusValue.textContent = radiusInput.value;
+            });
+            
+            // Управление прозрачностью OSM
+            osmOpacityInput.addEventListener('input', () => {
+                updateOSMOpacity();
+                osmOpacityValue.textContent = `${osmOpacityInput.value}%`;
+            });
+
+            // Экспорт карты в PNG
+            exportButton.addEventListener('click', exportMapToBMP);
+
+            // Функция для очистки базы данных
+            clearDbButton.addEventListener('click', function() {
+                confirmDialog.style.display = 'flex';
+            });
+            
+            // Обработчики для модального окна
+            confirmCancel.addEventListener('click', function() {
+                confirmDialog.style.display = 'none';
+            });
+            
+            confirmOk.addEventListener('click', function() {
+                confirmDialog.style.display = 'none';
+                
+                // Получаем CSRF токен
+                fetch('/get-csrf-token/')
+                .then(response => response.json())
+                .then(data => {
+                    const csrftoken = data.csrfToken;
+                    
+                    fetch('/clear-db/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrftoken,
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            vectorSource.clear();
+                            lastDataSignature = null;
+                            removeOSMVectorTiles();
+                            console.log('База данных очищена');
+                        }
+                    });
+                });
+            });
+            
+            window.addEventListener('click', function(event) {
+                if (event.target === confirmDialog) {
+                    confirmDialog.style.display = 'none';
+                }
+            });
+
+            // Обработчик для кнопки загрузки OSM
+            drawOsmButton.addEventListener('click', function() {
+                osmVectorSource.clear();
+                
+                if (drawInteraction) {
+                    map.removeInteraction(drawInteraction);
+                }
+                
+                drawInteraction = new ol.interaction.Draw({
+                    source: osmVectorSource,
+                    type: 'Circle',
+                    geometryFunction: ol.interaction.Draw.createBox()
+                });
+                
+                map.addInteraction(drawInteraction);
+                
+                // При завершении рисования
+                drawInteraction.on('drawend', function(event) {
+                    const geometry = event.feature.getGeometry();
+                    if (!geometry) {
+                        alert('Ошибка: не удалось получить геометрию');
+                        return;
+                    }
+                    
+                    const extent = geometry.getExtent();
+                    if (!extent || extent.length !== 4) {
+                        alert('Ошибка: неверный формат экстента');
+                        return;
+                    }
+                    
+                    // Преобразуем координаты в WGS84
+                    const minCoord = ol.proj.toLonLat([extent[0], extent[1]]);
+                    const maxCoord = ol.proj.toLonLat([extent[2], extent[3]]);
+                    
+                    // Проверяем координаты
+                    if (!minCoord || !maxCoord || 
+                        isNaN(minCoord[0]) || isNaN(minCoord[1]) || 
+                        isNaN(maxCoord[0]) || isNaN(maxCoord[1])) {
+                        alert('Ошибка: неверные координаты области');
+                        return;
+                    }
+                    
+                    // Форматируем bbox
+                    const bbox = [
+                        minCoord[0], 
+                        minCoord[1], 
+                        maxCoord[0], 
+                        maxCoord[1]
+                    ];
+                    
+                    // Обновляем состояние кнопки
+                    drawOsmButton.innerHTML = '⏳ Загрузка...';
+                    drawOsmButton.disabled = true;
+
+                    // Удаляем взаимодействие рисования
+                    map.removeInteraction(drawInteraction);
+                    drawInteraction = null;
+                    
+                    // Загружаем данные OSM
+                    loadOSMData(bbox)
+                        .then(() => {
+                            drawOsmButton.innerHTML = '🟩 Выбрать область загрузки OSM';
+                            drawOsmButton.disabled = false;
+                        })
+                        .catch(() => {
+                            drawOsmButton.innerHTML = '🟩 Выбрать область загрузки OSM';
+                            drawOsmButton.disabled = false;
+                        });
+                });
+            });
+
+            // Инициализация значений
+            blurValue.textContent = blurInput.value;
+            radiusValue.textContent = radiusInput.value;
+            osmOpacityValue.textContent = `${osmOpacityInput.value}%`;
+        }
+
+        // Запуск проверки изменений
+        function startDataMonitoring() {
+            eventSource = new EventSource('/data-updates/');
+            
+            eventSource.onmessage = async (event) => {
+                try {
+                    await checkDataChanges();
+                } catch (e) {
+                    console.error('Ошибка обновления данных:', e);
+                }
+            };
+            
+            eventSource.onerror = (error) => {
+                console.error('Ошибка SSE:', error);
+                if (eventSource) eventSource.close();
+                setTimeout(startDataMonitoring, 5000);
+            };
+
+            // Периодическая проверка
+            dataCheckInterval = setInterval(async () => {
+                try {
+                    await checkDataChanges();
+                } catch (e) {
+                    console.error('Ошибка при периодической проверке данных:', e);
+                }
+            }, 30000);
+        }
+
+        // Остановка обновления при закрытии страницы
+        function setupCleanup() {
+            window.addEventListener('beforeunload', () => {
+                if (eventSource) eventSource.close();
+                if (dataCheckInterval) clearInterval(dataCheckInterval);
+            });
+        }
+
+        // Основная функция инициализации
+        function init() {
+            initMap();
+            loadInitialData();
+            initControls();
+            startDataMonitoring();
+            setupCleanup();
+        }
+
+        // Запуск приложения после загрузки страницы
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
