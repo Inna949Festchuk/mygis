@@ -145,3 +145,6 @@ os.environ['RUN_MAIN'] = 'true' # для запуска DataImporter
 #         },
 #     },
 # }
+
+# Настройки для osm2pgsql
+# OSM2PGSQL_STYLE_PATH = '/usr/share/openstreetmap-carto/openstreetmap-carto-flex.lua'

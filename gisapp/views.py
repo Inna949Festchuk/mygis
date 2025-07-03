@@ -93,104 +93,6 @@ def data_updates(request):
     return response
 
 
- 
-# @csrf_exempt
-# def load_osm(request):
-#     if request.method == 'POST':
-#         try:
-#             # Получаем bbox из запроса
-#             bbox_str = request.POST.get('bbox', '')
-#             bbox = [float(coord) for coord in bbox_str.split(',')]
-            
-#             if len(bbox) != 4:
-#                 return JsonResponse({'status': 'error', 'message': 'Invalid bbox format'})
-            
-#             # Форматируем bbox для Overpass API (south, west, north, east)
-#             south, west, north, east = bbox[1], bbox[0], bbox[3], bbox[2]
-            
-#             # Создаем корректный запрос к Overpass API
-#             overpass_query = f"""
-#                 [out:xml][timeout:180];
-#                 (
-#                     node({south}, {west}, {north}, {east});
-#                     way({south}, {west}, {north}, {east});
-#                     relation({south}, {west}, {north}, {east});
-#                 );
-#                 (._;>;);
-#                 out body;
-#             """
-            
-#             # Отправляем запрос к Overpass API
-#             response = requests.post(
-#                 'https://overpass-api.de/api/interpreter',
-#                 data=overpass_query,
-#                 headers={'Content-Type': 'application/x-www-form-urlencoded'}
-#             )
-#             response.raise_for_status()
-            
-#             # Сохраняем ответ во временный файл
-#             with tempfile.NamedTemporaryFile(suffix='.osm', delete=False) as tmpfile:
-#                 tmpfile.write(response.content)
-#                 osm_file_path = tmpfile.name
-            
-#             # Параметры подключения к БД
-#             db_config = settings.DATABASES['default']
-#             cmd = [
-#                 'osm2pgsql',
-#                 '--create',
-#                 '--slim',
-#                 '--hstore',
-#                 '--prefix', 'planet_osm',
-#                 '--proj', '3857',
-#                 '--database', db_config['NAME'],
-#                 '--username', db_config['USER'],
-#                 '--host', db_config['HOST'] or 'localhost',
-#                 '--port', db_config['PORT'] or '5432',
-#                 osm_file_path
-#             ]
-            
-#             env = os.environ.copy()
-#             env['PGPASSWORD'] = db_config['PASSWORD']
-            
-#             # Запускаем процесс
-#             result = subprocess.run(
-#                 cmd,
-#                 env=env,
-#                 capture_output=True,
-#                 text=True
-#             )
-            
-#             # Удаляем временный файл
-#             os.unlink(osm_file_path)
-            
-#             if result.returncode == 0:
-#                 return JsonResponse({'status': 'success', 'message': 'Данные успешно загружены в PostGIS'})
-#             else:
-#                 return JsonResponse({
-#                     'status': 'error',
-#                     'message': f'Ошибка загрузки: {result.stderr}'
-#                 })
-                
-#         except Exception as e:
-#             return JsonResponse({
-#                 'status': 'error',
-#                 'message': f'Системная ошибка: {str(e)}'
-#             })
-#     return JsonResponse({'status': 'error', 'message': 'Неверный метод запроса'})
-
-
-import os
-import json
-import tempfile
-import subprocess
-import requests
-import shutil
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from django.db import connection
-from django.contrib.gis.geos import Polygon
-
 @csrf_exempt
 def load_osm(request):
     if request.method == 'POST':
@@ -203,14 +105,6 @@ def load_osm(request):
                 return JsonResponse({
                     'status': 'error', 
                     'message': 'Неверный формат bbox'
-                })
-            
-            # Создаем полигон для проверки
-            poly = Polygon.from_bbox(bbox)
-            if poly.area > 0.25:
-                return JsonResponse({
-                    'status': 'error',
-                    'message': 'Область слишком большая'
                 })
             
             # Формируем запрос к Overpass API
@@ -239,13 +133,15 @@ def load_osm(request):
                 tmpfile.write(response.content)
                 osm_file_path = tmpfile.name
             
-            # Загрузка в PostGIS
+            # Загрузка в PostGIS с использованием openstreetmap-carto схемы 
             db_config = settings.DATABASES['default']
             cmd = [
                 'osm2pgsql',
-                '--create',
+                # '--create',
                 '--slim',
+                '--style', '/usr/share/openstreetmap-carto/openstreetmap-carto.style',  # Используем стиль
                 '--hstore',
+                # '--cache', '2048',
                 '--prefix', 'planet_osm',
                 '--proj', '3857',
                 '--database', db_config['NAME'],
@@ -256,8 +152,9 @@ def load_osm(request):
             ]
             
             env = os.environ.copy()
-            env['PGPASSWORD'] = db_config['PASSWORD']
-            
+            env['PGPASSWORD'] = db_config['PASSWORD'] # 
+                        
+            logger.info(f"Выполнение команды: {' '.join(cmd)}")
             result = subprocess.run(
                 cmd,
                 env=env,
@@ -270,9 +167,11 @@ def load_osm(request):
             os.unlink(osm_file_path)
             
             if result.returncode != 0:
+                # Логируем полную ошибку
+                logger.error(f"osm2pgsql error: {result.stderr}")
                 return JsonResponse({
                     'status': 'error',
-                    'message': f'Ошибка osm2pgsql: {result.stderr[:500]}'
+                    'message': f'Ошибка импорта данных: {result.stderr[:500]}'
                 })
             
             return JsonResponse({
@@ -281,12 +180,13 @@ def load_osm(request):
             })
             
         except Exception as e:
+            logger.exception("Critical error in load_osm")
             return JsonResponse({
                 'status': 'error',
-                'message': f'Ошибка: {str(e)}'
+                'message': f'Системная ошибка: {str(e)}'
             })
     
     return JsonResponse({
         'status': 'error',
-        'message': 'Неверный метод запроса'
+        'message': 'Требуется POST-запрос'
     })

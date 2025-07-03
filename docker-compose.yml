@@ -1,91 +1,91 @@
-# version: '3'
+# # version: '3'
 
-# services:
-#   app:
-#     build:
-#       context: . # указываем директорию с Dockerfile
-#     entrypoint: "sh -c 'python manage.py migrate && python manage.py runserver 0.0.0.0:8000'" # указываем команду для запуска сервера
-#     volumes:
-#       - ./:/app
-#     ports:
-#       - "8000:8000"  # Добавляем проброс порта
-#     depends_on:
-#       db:
-#         condition: service_healthy
-#       # redis:
-#       #   condition: service_healthy
-#     networks:
-#       - backend-network
-
-#   db:
-#     image: postgis/postgis:15-3.3  # Образ с предустановленным PostGIS
-#     ports:
-#       - "5432:5432"
-#     environment:
-#       POSTGRES_DB: mygis
-#       POSTGRES_USER: postgres
-#       POSTGRES_PASSWORD: mygispass
-#     healthcheck:
-#       test: ["CMD-SHELL", "pg_isready -U postgres"] 
-#     networks:
-#       - backend-network
-
-#   # redis:
-#   #   image: redis:alpine
-#   #   ports:
-#   #     - "6379:6379"
-#   #   healthcheck:
-#   #     test: ["CMD", "redis-cli", "PING"]
-#   #     interval: 1s
-#   #     timeout: 1s
-#   #     retries: 30
-#   #   networks:
-#   #     - backend-network
-
-# #   map:
-# #     image: overv/openstreetmap-tile-server
+# # services:
+# #   app:
+# #     build:
+# #       context: . # указываем директорию с Dockerfile
+# #     entrypoint: "sh -c 'python manage.py migrate && python manage.py runserver 0.0.0.0:8000'" # указываем команду для запуска сервера
 # #     volumes:
-# #       - osm-data:/data/database/
+# #       - ./:/app
 # #     ports:
-# #       - "8080:80"
-# #     command: "run"
+# #       - "8000:8000"  # Добавляем проброс порта
+# #     depends_on:
+# #       db:
+# #         condition: service_healthy
+# #       # redis:
+# #       #   condition: service_healthy
+# #     networks:
+# #       - backend-network
 
-# # volumes:
-# #   osm-data:
-# #     external: true
+# #   db:
+# #     image: postgis/postgis:15-3.3  # Образ с предустановленным PostGIS
+# #     ports:
+# #       - "5432:5432"
+# #     environment:
+# #       POSTGRES_DB: mygis
+# #       POSTGRES_USER: postgres
+# #       POSTGRES_PASSWORD: mygispass
+# #     healthcheck:
+# #       test: ["CMD-SHELL", "pg_isready -U postgres"] 
+# #     networks:
+# #       - backend-network
 
-# networks:
-#   backend-network:
-#     driver: bridge
+# #   # redis:
+# #   #   image: redis:alpine
+# #   #   ports:
+# #   #     - "6379:6379"
+# #   #   healthcheck:
+# #   #     test: ["CMD", "redis-cli", "PING"]
+# #   #     interval: 1s
+# #   #     timeout: 1s
+# #   #     retries: 30
+# #   #   networks:
+# #   #     - backend-network
+
+# # #   map:
+# # #     image: overv/openstreetmap-tile-server
+# # #     volumes:
+# # #       - osm-data:/data/database/
+# # #     ports:
+# # #       - "8080:80"
+# # #     command: "run"
+
+# # # volumes:
+# # #   osm-data:
+# # #     external: true
+
+# # networks:
+# #   backend-network:
+# #     driver: bridge
 
 
 
-# version: '3'
+# version: '3.8'
 
 services:
   db:
     image: postgis/postgis:13-3.3
     container_name: postgis
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-mygis}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mygispass}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d  # Скрипты инициализации
+      - ./postgres-init:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-mygis}"]
+      # interval: 10s
+      # timeout: 5s
+      # retries: 5  # количество попыток
 
   tileserv:
     image: pramsey/pg_tileserv
     container_name: pg_tileserv
     environment:
-      DATABASE_URL: "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable"
+      DATABASE_URL: "postgres://${DB_USER:-postgres}:${DB_PASSWORD:-mygispass}@db:5432/${DB_NAME:-mygis}?sslmode=disable"
     ports:
       - "7800:7800"
     depends_on:
@@ -93,16 +93,22 @@ services:
         condition: service_healthy
 
   web:
-    build: .
+    build: 
+      context: .
+      args:
+        DB_NAME: ${DB_NAME:-mygis}
+        DB_USER: ${DB_USER:-postgres}
+        DB_PASSWORD: ${DB_PASSWORD:-mygispass}
     container_name: django
     # entrypoint: "sh -c 'python manage.py migrate && gunicorn --bind 0.0.0.0:8000 --reload gisproject.wsgi:application'"
     entrypoint: "sh -c 'python manage.py migrate && python manage.py runserver 0.0.0.0:8000'"
     volumes:
       - .:/app
+      # - osm2pgsql_cache:/var/cache/osm2pgsql
     environment:
-      POSTGRES_NAME: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_NAME: ${DB_NAME:-mygis}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-mygispass}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
     ports:
@@ -113,3 +119,4 @@ services:
 
 volumes:
   postgres_data:
+  # osm2pgsql_cache:
